@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 14, 2025 at 01:26 PM
+-- Generation Time: Oct 14, 2025 at 01:49 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -99,7 +99,20 @@ INSERT INTO `holidays` (`Date`, `Name`, `Rate`, `Type`) VALUES
 ('2025-12-08', 'Immaculate Conception', 0.3, 'Special Holiday'),
 ('2025-11-02', 'All Souls Day', 0.3, 'Special Holiday'),
 ('2025-12-24', 'Christmas Eve', 0.3, 'Special Holiday'),
-('2025-12-31', 'Last Day of the Year', 0.3, 'Special Holiday');
+('2025-12-31', 'Last Day of the Year', 0.3, 'Special Holiday'),
+('2025-01-01', 'New Year', 1, 'Regular Holiday'),
+('2025-01-05', 'Three Kings', 1, 'Regular Holiday'),
+('2025-04-09', 'Araw ng Kagitingan', 1, 'Regular Holiday'),
+('2025-04-10', 'Edil Ftr', 1, 'Regular Holiday'),
+('2025-05-01', 'Labor Day', 1, 'Regular Holiday'),
+('2025-06-12', 'Independence Day', 1, 'Regular Holiday'),
+('2025-08-26', 'National Heroes Day', 1, 'Regular Holiday'),
+('2025-11-30', 'Bonifacio Day', 1, 'Regular Holiday'),
+('2025-12-25', 'Christmas Day', 1, 'Regular Holiday'),
+('2025-12-30', 'Rizal Day', 1, 'Regular Holiday'),
+('2026-01-01', 'New Year', 1, 'Regular Holiday'),
+('2025-04-02', 'Maundy Thursday', 1, 'Regular Holiday'),
+('2026-04-03', 'Good Friday', 1, 'Regular Holiday');
 
 -- --------------------------------------------------------
 
