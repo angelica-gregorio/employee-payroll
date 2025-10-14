@@ -73,7 +73,7 @@ if (isset($_POST["add"])) {
       continue;
     }
 
-    $sql = "INSERT INTO employeedetails (Name, ShiftDate, ShiftNo, Hours, DutyType)
+    $sql = "INSERT INTO timesheet (Name, ShiftDate, ShiftNo, Hours, DutyType)
         VALUES ('$name', '$shiftDate', '$shiftNo', '$hours', '$dutyType')";
     if ($conn->query($sql)) {
       $success++;
@@ -117,7 +117,7 @@ if (isset($_POST["update"])) {
       $fail++;
       continue;
     }
-    $sql = "UPDATE employeedetails
+    $sql = "UPDATE timesheet
         SET Name='$name', ShiftDate='$shiftDate',
           ShiftNo='$shiftNo', Hours='$hours', DutyType='$dutyType'
         WHERE DataEntryID='$id'";
@@ -147,7 +147,7 @@ if (isset($_POST["delete"])) {
   $fail = 0;
   foreach ($ids as $id) {
     $id = (int)$id;
-    $sql = "DELETE FROM employeedetails WHERE DataEntryID='$id'";
+    $sql = "DELETE FROM timesheet WHERE DataEntryID='$id'";
     if ($conn->query($sql)) {
       $success++;
     } else {
@@ -155,10 +155,10 @@ if (isset($_POST["delete"])) {
     }
   }
   // Check if table is now empty, then reset AUTO_INCREMENT
-  $check = $conn->query("SELECT COUNT(*) as cnt FROM employeedetails");
+  $check = $conn->query("SELECT COUNT(*) as cnt FROM timesheet");
   $row = $check ? $check->fetch_assoc() : null;
   if ($row && $row['cnt'] == 0) {
-    $conn->query("ALTER TABLE employeedetails AUTO_INCREMENT = 1");
+    $conn->query("ALTER TABLE timesheet AUTO_INCREMENT = 1");
   }
   if ($success > 0) {
     $_SESSION['toast'] = "$success employee(s) deleted successfully!";
@@ -174,13 +174,13 @@ if (isset($_POST["delete"])) {
 if (isset($_POST['delete_selected']) && !empty($_POST['selected_ids'])) {
   $ids = array_map('intval', $_POST['selected_ids']);
   $idList = implode(',', $ids);
-  $sql = "DELETE FROM employeedetails WHERE DataEntryID IN ($idList)";
+  $sql = "DELETE FROM timesheet WHERE DataEntryID IN ($idList)";
   if ($conn->query($sql)) {
     // Check if table is now empty, then reset AUTO_INCREMENT
-    $check = $conn->query("SELECT COUNT(*) as cnt FROM employeedetails");
+    $check = $conn->query("SELECT COUNT(*) as cnt FROM timesheet");
     $row = $check ? $check->fetch_assoc() : null;
     if ($row && $row['cnt'] == 0) {
-      $conn->query("ALTER TABLE employeedetails AUTO_INCREMENT = 1");
+      $conn->query("ALTER TABLE timesheet AUTO_INCREMENT = 1");
     }
     $_SESSION['toast'] = "Selected employees deleted successfully!";
   } else {
@@ -211,7 +211,7 @@ if (!empty($_POST["shift_no"])) {
 }
 
 // Base queries
-$sql_all = "SELECT * FROM employeedetails 
+$sql_all = "SELECT * FROM timesheet 
             WHERE TRIM(Name) <> '' 
               AND ShiftDate IS NOT NULL 
               AND ShiftNo IS NOT NULL 
@@ -362,16 +362,16 @@ if (isset($_POST['clear_filter'])) {
         <?php
           $dateFilter = isset($_GET['dashboard_date']) && $_GET['dashboard_date'] ?
             (" AND ShiftDate='" . $conn->real_escape_string($_GET['dashboard_date']) . "'") : '';
-          $totalEmployees = $conn->query("SELECT COUNT(*) AS cnt FROM employeedetails 
+          $totalEmployees = $conn->query("SELECT COUNT(*) AS cnt FROM timesheet 
           WHERE TRIM(Name) <> '' 
           AND ShiftDate IS NOT NULL 
           AND ShiftNo IS NOT NULL 
           AND Hours IS NOT NULL 
           AND TRIM(DutyType) <> '' 
           $dateFilter")->fetch_assoc()['cnt'];
-          $totalLate = $conn->query("SELECT COUNT(*) as cnt FROM employeedetails WHERE DutyType='Late' $dateFilter")->fetch_assoc()['cnt'];
-          $totalOvertime = $conn->query("SELECT COUNT(*) as cnt FROM employeedetails WHERE DutyType='Overtime' $dateFilter")->fetch_assoc()['cnt'];
-          $totalOnDuty = $conn->query("SELECT COUNT(*) as cnt FROM employeedetails WHERE DutyType='OnDuty' $dateFilter")->fetch_assoc()['cnt'];
+          $totalLate = $conn->query("SELECT COUNT(*) as cnt FROM timesheet WHERE DutyType='Late' $dateFilter")->fetch_assoc()['cnt'];
+          $totalOvertime = $conn->query("SELECT COUNT(*) as cnt FROM timesheet WHERE DutyType='Overtime' $dateFilter")->fetch_assoc()['cnt'];
+          $totalOnDuty = $conn->query("SELECT COUNT(*) as cnt FROM timesheet WHERE DutyType='OnDuty' $dateFilter")->fetch_assoc()['cnt'];
         ?>
         <div class="col-6 col-md-3">
           <div class="card shadow-sm text-center py-3 dashboard-card">
