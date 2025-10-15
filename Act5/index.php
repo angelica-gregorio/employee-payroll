@@ -197,7 +197,7 @@ $where = [];
 
 if (!empty($_POST["name"])) {
   $search_name = $conn->real_escape_string($_POST["name"]);
-  $where[] = "(Name LIKE '%$search_name%')";
+  $where[] = "(TRIM(REPLACE(Name, '\r', '')) LIKE '%" . trim($search_name) . "%')";
 }
 
 if (!empty($_POST["shift_date"])) {
@@ -283,6 +283,56 @@ if (isset($_POST['clear_filter'])) {
   header("Location: " . $_SERVER['PHP_SELF']);
   exit;
 }
+
+// [ UPLOAD CSV FEATURE ]
+if (isset($_POST['upload'])) {
+    if (!empty($_FILES['file']['tmp_name'])) {
+        $file = $_FILES['file']['tmp_name'];
+        $handle = fopen($file, "r");
+        fgetcsv($handle); // skip header row
+
+        $success = 0;
+        $fail = 0;
+        while (($row = fgetcsv($handle, 1000, ",")) !== FALSE) {
+            // Match the columns in your CSV
+            $shiftDates     = isset($row[0]) ? $conn->real_escape_string($row[0]) : '';
+            $shiftNos       = isset($row[1]) ? $conn->real_escape_string($row[1]) : '';
+            $businessUnits  = isset($row[2]) ? $conn->real_escape_string($row[2]) : '';
+            $names          = isset($row[3]) ? $conn->real_escape_string($row[3]) : '';
+            $timeIns        = isset($row[4]) ? $conn->real_escape_string($row[4]) : '';
+            $timeOuts       = isset($row[5]) ? $conn->real_escape_string($row[5]) : '';
+            $hoursArr       = isset($row[6]) ? $conn->real_escape_string($row[6]) : '';
+            $roles          = isset($row[7]) ? $conn->real_escape_string($row[7]) : '';
+            $dutyTypes      = isset($row[8]) ? $conn->real_escape_string($row[8]) : '';
+            $deductions     = isset($row[9]) && $row[9] !== '' ? $conn->real_escape_string($row[9]) : '0';
+            $bonuses        = isset($row[10]) && $row[10] !== '' ? $conn->real_escape_string($row[10]) : '0';
+            if ($deductions === '' || $bonuses === '') {
+                continue; // skip invalid rows
+            }
+
+            // Convert date to Y-m-d if in m/d/Y format
+            if (preg_match('/\d{1,2}\/\d{1,2}\/\d{4}/', $shiftDates)) {
+                $shiftDates = date('Y-m-d', strtotime($shiftDates));
+            }
+
+            // Adjust table/column names to match your schema
+            $sql = "INSERT INTO timesheet (`ShiftDate`, `ShiftNo`, `Business_Unit`, `Name`, `TimeIN`, `TimeOUT`, `Hours`, `Role`, `DutyType`, `Deductions`, `Bonus`)
+                    VALUES ('$shiftDates','$shiftNos','$businessUnits','$names','$timeIns','$timeOuts','$hoursArr','$roles','$dutyTypes','$deductions','$bonuses')";
+
+            if ($conn->query($sql)) {
+                $success++;
+            } else {
+                $fail++;
+            }
+        }
+        fclose($handle);
+        $_SESSION['toast'] = "✅ $success row(s) imported. ❌ $fail failed.";
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    }
+}
+
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -340,6 +390,11 @@ if (isset($_POST['clear_filter'])) {
                     <button type="button" class="btn btn-outline-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#searchModal">
                         <span class="material-icons align-middle me-1">search</span> Search
                     </button>
+
+                    <a href="salary_summary.php" class="btn btn-outline-info d-flex align-items-center">
+                      <span class="material-icons align-middle me-1">paid</span> Salary Summary
+                    </a>
+
                     <button id="toggleDarkMode" class="icon-darkmode-btn ms-2" title="Toggle dark/light mode" style="background:none;border:none;outline:none;padding:0;display:flex;align-items:center;">
                       <span id="darkModeIconSwitch" class="material-icons" aria-hidden="true">dark_mode</span>
                     </button>
@@ -441,11 +496,23 @@ if (isset($_POST['clear_filter'])) {
             </h4>
           </div>
           <div class="col-md-6 d-flex justify-content-md-end justify-content-start mt-2 mt-md-0 align-items-center gap-2">
+
+          <!--[ UPLOAD CSV BUTTON ]-->
+          <?php if ($show_all) { ?>
+              <form method="POST" enctype="multipart/form-data" class="d-inline ms-2" id="uploadForm">
+                <input type="file" name="file" accept=".csv" required 
+                  class="form-control form-control-sm d-inline-block" 
+                  style="width: 200px; display: inline-block;">
+                <button type="submit" name="upload" class="btn btn-success btn-sm">Upload CSV</button>
+              </form>
+            <?php } ?>
+
             <?php if ($show_all) { ?>
               <form method="post" class="d-inline ms-2" id="exportAllForm">
                 <button type="submit" name="export_all" class="btn btn-dark">Export All</button>
               </form>
             <?php } ?>
+
             <?php if (!$show_all) { ?>
               <form method="post" class="d-inline">
                 <button type="submit" name="view_all" class="btn btn-success">View All</button>
