@@ -58,7 +58,7 @@ if (isset($_POST["add"])) {
 
   $success = 0;
   $fail = 0;
-  for ($i = 0; $i < count($firstNames); $i++) {
+  for ($i = 0; $i < count($names); $i++) {
     $name = $conn->real_escape_string($names[$i]);
     $shiftDate = $conn->real_escape_string($shiftDates[$i]);
     $shiftNo = (int)$shiftNos[$i];
@@ -211,12 +211,15 @@ if (!empty($_POST["shift_no"])) {
 }
 
 // Base queries
-$sql_all = "SELECT * FROM timesheet 
+$sql_all = $sql_all = "SELECT * FROM timesheet 
             WHERE TRIM(Name) <> '' 
-              AND ShiftDate IS NOT NULL 
-              AND ShiftNo IS NOT NULL 
-              AND Hours IS NOT NULL 
+              AND ShiftDate IS NOT NULL AND ShiftDate <> ''
+              AND ShiftNo IS NOT NULL AND ShiftNo <> ''
+              AND TimeIN IS NOT NULL AND TimeIN <> ''
+              AND TimeOUT IS NOT NULL AND TimeOUT <> ''
+              AND Hours IS NOT NULL AND Hours <> ''
               AND TRIM(DutyType) <> ''";
+
 $sql_filtered = $sql_all;
 
 if (!empty($where)) {
@@ -233,7 +236,15 @@ $result_filtered = $conn->query($sql_filtered);
 // when show all button is clicked
 
 // Default: show all employees unless a filter is applied
-$show_all = true;
+$show_all = "SELECT * FROM timesheet 
+            WHERE TRIM(Name) <> '' 
+              AND ShiftDate IS NOT NULL AND ShiftDate <> ''
+              AND ShiftNo IS NOT NULL AND ShiftNo <> ''
+              AND TimeIN IS NOT NULL AND TimeIN <> ''
+              AND TimeOUT IS NOT NULL AND TimeOUT <> ''
+              AND Hours IS NOT NULL AND Hours <> ''
+              AND TRIM(DutyType) <> ''";
+
 
 
 // If any filter is applied, show filtered employees
@@ -293,21 +304,26 @@ if (isset($_POST['upload'])) {
 
         $success = 0;
         $fail = 0;
+        $insertedIDs = []; // store generated DataEntryIDs for confirmation
+
         while (($row = fgetcsv($handle, 1000, ",")) !== FALSE) {
+
             // Match the columns in your CSV
-            $shiftDates     = isset($row[0]) ? $conn->real_escape_string($row[0]) : '';
-            $shiftNos       = isset($row[1]) ? $conn->real_escape_string($row[1]) : '';
-            $businessUnits  = isset($row[2]) ? $conn->real_escape_string($row[2]) : '';
-            $names          = isset($row[3]) ? $conn->real_escape_string($row[3]) : '';
-            $timeIns        = isset($row[4]) ? $conn->real_escape_string($row[4]) : '';
-            $timeOuts       = isset($row[5]) ? $conn->real_escape_string($row[5]) : '';
-            $hoursArr       = isset($row[6]) ? $conn->real_escape_string($row[6]) : '';
-            $roles          = isset($row[7]) ? $conn->real_escape_string($row[7]) : '';
-            $dutyTypes      = isset($row[8]) ? $conn->real_escape_string($row[8]) : '';
-            $deductions     = isset($row[9]) && $row[9] !== '' ? $conn->real_escape_string($row[9]) : '0';
-            $bonuses        = isset($row[10]) && $row[10] !== '' ? $conn->real_escape_string($row[10]) : '0';
-            if ($deductions === '' || $bonuses === '') {
-                continue; // skip invalid rows
+            $shiftDates    = isset($row[0]) ? $conn->real_escape_string($row[0]) : '';
+            $shiftNos      = isset($row[1]) ? $conn->real_escape_string($row[1]) : '';
+            $businessUnits = isset($row[2]) ? $conn->real_escape_string($row[2]) : '';
+            $names         = isset($row[3]) ? $conn->real_escape_string($row[3]) : '';
+            $timeIns       = isset($row[4]) ? $conn->real_escape_string($row[4]) : '';
+            $timeOuts      = isset($row[5]) ? $conn->real_escape_string($row[5]) : '';
+            $hoursArr      = isset($row[6]) ? $conn->real_escape_string($row[6]) : '';
+            $roles         = isset($row[7]) ? $conn->real_escape_string($row[7]) : '';
+            $dutyTypes     = isset($row[8]) ? $conn->real_escape_string($row[8]) : '';
+            $deductions    = isset($row[9]) && $row[9] !== '' ? $conn->real_escape_string($row[9]) : '0';
+            $bonuses       = isset($row[10]) && $row[10] !== '' ? $conn->real_escape_string($row[10]) : '0';
+
+            // Skip invalid rows
+            if ($shiftDates === '' || $names === '') {
+                continue;
             }
 
             // Convert date to Y-m-d if in m/d/Y format
@@ -315,18 +331,26 @@ if (isset($_POST['upload'])) {
                 $shiftDates = date('Y-m-d', strtotime($shiftDates));
             }
 
-            // Adjust table/column names to match your schema
-            $sql = "INSERT INTO timesheet (`ShiftDate`, `ShiftNo`, `Business_Unit`, `Name`, `TimeIN`, `TimeOUT`, `Hours`, `Role`, `DutyType`, `Deductions`, `Bonus`)
-                    VALUES ('$shiftDates','$shiftNos','$businessUnits','$names','$timeIns','$timeOuts','$hoursArr','$roles','$dutyTypes','$deductions','$bonuses')";
+            // ✅ Do NOT include DataEntryID — MySQL will auto-increment it
+            $sql = "INSERT INTO timesheet 
+                    (`ShiftDate`, `ShiftNo`, `Business_Unit`, `Name`, `TimeIN`, `TimeOUT`, `Hours`, `Role`, `DutyType`, `Deductions`, `Notes`)
+                    VALUES 
+                    ('$shiftDates','$shiftNos','$businessUnits','$names','$timeIns','$timeOuts','$hoursArr','$roles','$dutyTypes','$deductions','$bonuses')";
 
             if ($conn->query($sql)) {
                 $success++;
+                $insertedIDs[] = $conn->insert_id; // retrieve the new DataEntryID
             } else {
                 $fail++;
             }
         }
+
         fclose($handle);
-        $_SESSION['toast'] = "✅ $success row(s) imported. ❌ $fail failed.";
+
+        // ✅ Display success message with generated IDs
+        $idList = implode(", ", $insertedIDs);
+        $_SESSION['toast'] = "✅ $success row(s) imported. ❌ $fail failed.<br>🆔 Inserted IDs: $idList";
+
         header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
@@ -419,9 +443,11 @@ if (isset($_POST['upload'])) {
             (" AND ShiftDate='" . $conn->real_escape_string($_GET['dashboard_date']) . "'") : '';
           $totalEmployees = $conn->query("SELECT COUNT(*) AS cnt FROM timesheet 
           WHERE TRIM(Name) <> '' 
-          AND ShiftDate IS NOT NULL 
-          AND ShiftNo IS NOT NULL 
-          AND Hours IS NOT NULL 
+          AND ShiftDate IS NOT NULL AND ShiftDate <> ''
+          AND ShiftNo IS NOT NULL AND ShiftNo <> ''
+          AND TimeIN IS NOT NULL AND TimeIN <> ''
+          AND TimeOUT IS NOT NULL AND TimeOUT <> ''
+          AND Hours IS NOT NULL AND Hours <> ''
           AND TRIM(DutyType) <> '' 
           $dateFilter")->fetch_assoc()['cnt'];
           $totalLate = $conn->query("SELECT COUNT(*) as cnt FROM timesheet WHERE DutyType='Late' $dateFilter")->fetch_assoc()['cnt'];
@@ -466,10 +492,9 @@ if (isset($_POST['upload'])) {
         <!-- Main Content: Only Employees Table -->
         <div id="content" class="flex-grow-1 p-4">
             <div id="all">
-                <?php if (!empty($_POST['last_name']) || !empty($_POST['shift_date']) || !empty($_POST['shift_no'])): ?>
                 <div class="search-query-card mb-2" id="search-query-card" style="max-width:1100px;margin-left:auto;margin-right:auto;min-width:400px;width:90%;">
                     <?php if (!empty($_POST['last_name'])): ?>
-                        <span class="search-query-chip">Name: <?= htmlspecialchars($_POST['name']) ?></span>
+                        <span class="search-query-chip">Name: <?= htmlspecialchars($_POST['last_name']) ?></span>
                     <?php endif; ?>
                     <?php if (!empty($_POST['shift_date'])): ?>
                         <span class="search-query-chip">Date: <?= htmlspecialchars($_POST['shift_date']) ?></span>
@@ -488,7 +513,6 @@ if (isset($_POST['upload'])) {
                         <button type="submit" name="export_filtered" class="query-card-btn">Export Filtered</button>
                     </form>
                 </div>
-                <?php endif; ?>
                 <div class="row mb-3 align-items-center" style="max-width:1100px;margin-left:auto;margin-right:auto;">
           <div class="col-md-6 d-flex flex-wrap gap-2 align-items-center">
             <h4 class="fw-bold mb-0" style="display:inline;font-family:'Segoe UI', 'Liberation Sans', 'DejaVu Sans', 'Arial', 'sans-serif';"> 
