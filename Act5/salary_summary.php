@@ -9,13 +9,13 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-/* Helper Function */
+/* HELPER FUNCTION */
 function showValue($val)
 {
     return ($val > 0) ? '₱' . number_format($val, 2) : '-';
 }
 
-/* Month Range Preset */
+/* MONTH RANGE */
 $dateRanges = [
     'January' => ['01-01 to 01-31'],
     'February' => ['02-01 to 02-28'],
@@ -39,11 +39,14 @@ $dateRanges = [
     <title>Salary Summary</title>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
+    <link href="salary_summary.css" rel="stylesheet">
+
 </head>
 <body class="d-flex flex-column min-vh-100">
 
-    <!-- Navbar -->
+    <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary); padding: 15px 30px;">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <span class="navbar-brand mb-0 h1 fw-bold" style="color: var(--text-light);">
@@ -159,7 +162,7 @@ $dateRanges = [
                         $data[$name]['DaysWorked'][$row['ShiftDate']] = true;
                     }
 
-                    // Night Differential (₱52 per night shift)
+                    //  NIGHT DIFFERENTIAL
                     $timeIn = strtotime($row['TimeIN']);
                     $timeOut = strtotime($row['TimeOUT']);
                     $note = strtolower(trim($row['Notes']));
@@ -180,7 +183,7 @@ $dateRanges = [
                         $data[$name]['NightDates'][] = $shiftDate;
                     }
 
-                    // Holiday Pay Computation (Fully Duplicate-Safe)
+                    // HOLIDAY PAY 
                     if (!empty($row['HolidayType'])) {
                         $shiftDate = $row['ShiftDate'];
                         $holidayType = strtolower(trim($row['HolidayType']));
@@ -203,7 +206,7 @@ $dateRanges = [
                         }
                     }
 
-                    // Overtime
+                    // OVERTIME
                     if (!isset($data[$name]['OvertimeDates'])) $data[$name]['OvertimeDates'] = [];
                     if (strcasecmp(trim($row['DutyType']), 'Overtime') === 0 &&
                         is_numeric($row['Hours'])) {
@@ -214,7 +217,7 @@ $dateRanges = [
                         }
                     }
 
-                    // Late Deduction
+                    // LATE DEDUCTION
                     if (!isset($data[$name]['LateDates'])) $data[$name]['LateDates'] = [];
                     if (strtolower(trim($row['DutyType'])) === 'late') {
                         $shiftDate = $row['ShiftDate'];
@@ -287,7 +290,7 @@ $dateRanges = [
                     $rate2 = $rate / 8;
                     $overtimePay = $emp['OvertimeHrs'] * $rate2;
 
-                    // Allowance Computation
+                    // ALLOWANCE COMPUTATION
                     $nameEsc = $conn->real_escape_string($name);
                     $roleLower = strtolower($role);
 
@@ -362,7 +365,7 @@ $dateRanges = [
                         $allowance = $dailyAllowance;
                     }
 
-                    // Computation Summary
+                    // COMPUTATION SUMMARY 
                     $nightDiff = $emp['NightShifts'] * 52;
                     $holiday = $emp['HolidayPay'];
                     $silBonus = $emp['SILBonus'];
@@ -387,10 +390,10 @@ $dateRanges = [
                             <td>" . showValue($totalDeductions) . "</td>
                             <td><b class='text-success'>" . showValue($net) . "</b></td>
                             <td>
-                                <button class='btn btn-info btn-sm' type='button'
-                                        data-bs-toggle='collapse' data-bs-target='#details_$emp[EmpID]'>
-                                    Show Details
+                                <button class='btn-showdetails' type='button' data-bs-toggle='collapse' data-bs-target='#details_$emp[EmpID]' title='Show Details'>
+                                <i class='bi bi-chevron-down'></i>
                                 </button>
+
                                 <a href='generate_payslip.php?name=" . urlencode($name) .
                                 "&email=" . urlencode($emp['Email']) . "' class='btn btn-primary btn-sm'>
                                     Payslip
@@ -398,33 +401,48 @@ $dateRanges = [
                             </td>
                         </tr>
                         <tr class='collapse' id='details_$emp[EmpID]'>
-                            <td colspan='7'>
-                                <div class='text-start p-3 bg-light border rounded'>
-                                    <b>Computation Details for $name</b><br>
-                                    <ul class='mb-0'>
-                                        <li><b>Daily Rate:</b> ₱" . number_format($rate, 2) . "</li>
-                                        <li><b>Hourly Rate:</b> ₱" . number_format($rate2, 2) . "</li>
-                                        <li><b>Days Worked:</b> $days</li>
-                                        <li><b>Base Pay:</b> ₱" . number_format($basePay, 2) . "</li>
-                                        <li><b>Overtime Hours:</b> {$emp['OvertimeHrs']} hrs → ₱" . number_format($overtimePay, 2) . "</li>
-                                        <li><b>Allowance:</b> ₱" . number_format($allowance, 2) . "</li>
-                                        <li><b>Night Differential:</b> ₱" . number_format($nightDiff, 2) . "</li>
-                                        <li><b>Holiday Pay:</b> ₱" . number_format($holiday, 2) . "</li>
-                                        <li><b>SIL (Paid Leave):</b> ₱" . number_format($silBonus, 2) . "</li>
-                                        <li><b>SSS:</b> ₱" . number_format($sss, 2) . "</li>
-                                        <li><b>PHIC:</b> ₱" . number_format($phic, 2) . "</li>
-                                        <li><b>HDMF:</b> ₱" . number_format($hdmf, 2) . "</li>
-                                        <li><b>GOVT Loan:</b> ₱" . number_format($govt, 2) . "</li>
-                                        <li><b>Late Deduction:</b> ₱" . number_format($lateDeduction, 2) . "</li>
-                                        <li><b>Shortage:</b> ₱" . number_format($shortage, 2) . "</li>
-                                        <li><b>CA/Uniform:</b> ₱" . number_format($caUniform, 2) . "</li>
-                                        <li><b>Total Deductions:</b> ₱" . number_format($totalDeductions, 2) . "</li>
-                                        <li><b>Gross Income:</b> ₱" . number_format($gross, 2) . "</li>
-                                        <li><b>Net Income:</b> <b class='text-success'>₱" . number_format($net, 2) . "</b></li>
-                                    </ul>
-                                </div>
-                            </td>
-                        </tr>";
+    <td colspan='7'>
+        <div class='payroll-details'>
+            <h5>Payroll Breakdown — $name</h5>
+            <div class='payroll-grid'>
+                <div class='payroll-section'>
+                    <h6>Earnings</h6>
+                    <ul>
+                        <li><span>Daily Rate:</span> ₱" . number_format($rate, 2) . "</li>
+                        <li><span>Hourly Rate:</span> ₱" . number_format($rate2, 2) . "</li>
+                        <li><span>Days Worked:</span> $days</li>
+                        <li><span>Base Pay:</span> ₱" . number_format($basePay, 2) . "</li>
+                        <li><span>Overtime Hours:</span> {$emp['OvertimeHrs']} hrs</li>
+                        <li><span>Overtime Pay:</span> ₱" . number_format($overtimePay, 2) . "</li>
+                        <li><span>Allowance:</span> ₱" . number_format($allowance, 2) . "</li>
+                        <li><span>Night Differential:</span> ₱" . number_format($nightDiff, 2) . "</li>
+                        <li><span>Holiday Pay:</span> ₱" . number_format($holiday, 2) . "</li>
+                        <li><span>SIL (Paid Leave):</span> ₱" . number_format($silBonus, 2) . "</li>
+                    </ul>
+                </div>
+
+                <div class='payroll-section'>
+                    <h6>Deductions</h6>
+                    <ul>
+                        <li><span>SSS:</span> ₱" . number_format($sss, 2) . "</li>
+                        <li><span>PHIC:</span> ₱" . number_format($phic, 2) . "</li>
+                        <li><span>HDMF:</span> ₱" . number_format($hdmf, 2) . "</li>
+                        <li><span>GOVT Loan:</span> ₱" . number_format($govt, 2) . "</li>
+                        <li><span>Late Deduction:</span> ₱" . number_format($lateDeduction, 2) . "</li>
+                        <li><span>Shortage:</span> ₱" . number_format($shortage, 2) . "</li>
+                        <li><span>CA/Uniform:</span> ₱" . number_format($caUniform, 2) . "</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class='payroll-summary'>
+                <div><b>Gross Income:</b> ₱" . number_format($gross, 2) . "</div>
+                <div><b>Total Deductions:</b> ₱" . number_format($totalDeductions, 2) . "</div>
+                <div><b>Net Income:</b> <span class='net'>₱" . number_format($net, 2) . "</span></div>
+            </div>
+        </div>
+    </td>
+</tr>";
                 }
 
                 echo "</tbody></table></div>";
