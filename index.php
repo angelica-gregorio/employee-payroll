@@ -58,7 +58,7 @@ if (isset($_POST["add"])) {
 
   $success = 0;
   $fail = 0;
-  for ($i = 0; $i < count($names); $i++) {
+  for ($i = 0; $i < count($firstNames); $i++) {
     $name = $conn->real_escape_string($names[$i]);
     $shiftDate = $conn->real_escape_string($shiftDates[$i]);
     $shiftNo = (int)$shiftNos[$i];
@@ -211,15 +211,12 @@ if (!empty($_POST["shift_no"])) {
 }
 
 // Base queries
-$sql_all = $sql_all = "SELECT * FROM timesheet 
+$sql_all = "SELECT * FROM timesheet 
             WHERE TRIM(Name) <> '' 
-              AND ShiftDate IS NOT NULL AND ShiftDate <> ''
-              AND ShiftNo IS NOT NULL AND ShiftNo <> ''
-              AND TimeIN IS NOT NULL AND TimeIN <> ''
-              AND TimeOUT IS NOT NULL AND TimeOUT <> ''
-              AND Hours IS NOT NULL AND Hours <> ''
+              AND ShiftDate IS NOT NULL 
+              AND ShiftNo IS NOT NULL 
+              AND Hours IS NOT NULL 
               AND TRIM(DutyType) <> ''";
-
 $sql_filtered = $sql_all;
 
 if (!empty($where)) {
@@ -236,15 +233,7 @@ $result_filtered = $conn->query($sql_filtered);
 // when show all button is clicked
 
 // Default: show all employees unless a filter is applied
-$show_all = "SELECT * FROM timesheet 
-            WHERE TRIM(Name) <> '' 
-              AND ShiftDate IS NOT NULL AND ShiftDate <> ''
-              AND ShiftNo IS NOT NULL AND ShiftNo <> ''
-              AND TimeIN IS NOT NULL AND TimeIN <> ''
-              AND TimeOUT IS NOT NULL AND TimeOUT <> ''
-              AND Hours IS NOT NULL AND Hours <> ''
-              AND TRIM(DutyType) <> ''";
-
+$show_all = true;
 
 
 // If any filter is applied, show filtered employees
@@ -443,11 +432,9 @@ if (isset($_POST['upload'])) {
             (" AND ShiftDate='" . $conn->real_escape_string($_GET['dashboard_date']) . "'") : '';
           $totalEmployees = $conn->query("SELECT COUNT(*) AS cnt FROM timesheet 
           WHERE TRIM(Name) <> '' 
-          AND ShiftDate IS NOT NULL AND ShiftDate <> ''
-          AND ShiftNo IS NOT NULL AND ShiftNo <> ''
-          AND TimeIN IS NOT NULL AND TimeIN <> ''
-          AND TimeOUT IS NOT NULL AND TimeOUT <> ''
-          AND Hours IS NOT NULL AND Hours <> ''
+          AND ShiftDate IS NOT NULL 
+          AND ShiftNo IS NOT NULL 
+          AND Hours IS NOT NULL 
           AND TRIM(DutyType) <> '' 
           $dateFilter")->fetch_assoc()['cnt'];
           $totalLate = $conn->query("SELECT COUNT(*) as cnt FROM timesheet WHERE DutyType='Late' $dateFilter")->fetch_assoc()['cnt'];

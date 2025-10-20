@@ -1,50 +1,159 @@
 /* ===============================
-   salary_summary.css - Salary Summary Styles
+   COLLAPSIBLE PAYROLL DETAILS ROW
    =============================== */
-
-body {
-  background-color: #f8f9fa;
-  font-family: "Segoe UI", Arial, sans-serif;
-}
-
-h2 {
-  font-weight: 700;
-}
-
-.table thead th {
-  vertical-align: middle;
-}
-
-.details-row {
+tr.collapse {
   display: none;
+  background: #f8fafc;
+  transition: all 0.35s ease-in-out;
 }
 
-.payslip-table {
-  width: 60%;
-  margin: 0 auto;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+tr.collapse.show {
+  display: table-row;
 }
 
-.payslip-table td {
-  padding: 6px 10px;
+tr.collapse.show td {
+  background: #f9fbff;
+  padding: 28px 20px !important;
+  border-top: 1px solid #d0d8e0;
+  border-bottom: 1px solid #d0d8e0;
 }
 
-.payslip-table td:first-child {
+/* ===============================
+   PAYROLL DETAILS BOX
+   =============================== */
+.payroll-details {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  padding: 25px 30px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  transition: box-shadow 0.25s ease;
+}
+
+.payroll-details:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+.payroll-details h5 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1e3c72;
+  text-align: center;
+  margin-bottom: 24px;
+  letter-spacing: 0.4px;
+}
+
+/* ===============================
+   GRID LAYOUT FOR EARNINGS/DEDUCTIONS
+   =============================== */
+.payroll-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 30px;
+  margin-bottom: 24px;
+}
+
+/* ===============================
+   PAYROLL SECTION CARDS
+   =============================== */
+.payroll-section {
+  background: #f9f9f9;
+  border-radius: 10px;
+  padding: 15px;
+  border-left: 5px solid #1e90ff;
+  transition: background 0.25s ease;
+}
+
+.payroll-section:hover {
+  background: #f1f7ff;
+}
+
+.payroll-section h6 {
+  background: #e6f0ff;
+  color: #1e3c72;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* ===============================
+   LIST ITEMS (Earnings/Deductions)
+   =============================== */
+.payroll-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.payroll-section li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dashed #ccc;
+  font-size: 0.92rem;
+  color: #444;
+}
+
+.payroll-section li:last-child {
+  border-bottom: none;
+}
+
+.payroll-section li span:first-child {
   font-weight: 600;
-  width: 50%;
-  text-align: left;
-  background: #f8f9fa;
 }
 
-.payslip-table td:last-child {
+.payroll-section li span:last-child {
+  color: #222;
   text-align: right;
 }
 
-.btn-info {
-  font-size: 13px;
-  padding: 3px 8px;
-  border-radius: 5px;
+/* ===============================
+   PAYROLL SUMMARY AREA
+   =============================== */
+.payroll-summary {
+  background: #f0f8ff;
+  border-top: 3px solid #1e90ff;
+  border-radius: 8px;
+  padding: 18px 20px;
+  font-size: 1rem;
+}
+
+.payroll-summary div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.payroll-summary div:last-child {
+  margin-bottom: 0;
+}
+
+.payroll-summary b {
+  color: #1e3c72;
+}
+
+.payroll-summary .net {
+  color: #1aa260;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* ===============================
+   RESPONSIVE
+   =============================== */
+@media (max-width: 768px) {
+  .payroll-details {
+    padding: 18px 20px;
+  }
+
+  .payroll-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payroll-summary {
+    font-size: 0.95rem;
+  }
 }
