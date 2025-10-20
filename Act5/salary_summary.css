@@ -48,3 +48,134 @@ h2 {
   padding: 3px 8px;
   border-radius: 5px;
 }
+
+/* ===========================
+   Payroll Details Styling
+   =========================== */
+
+.payroll-details {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  padding: 24px 30px;
+  margin-top: 10px;
+  font-family: "Google Sans", sans-serif;
+  transition: all 0.25s ease;
+}
+
+.payroll-details:hover {
+  box-shadow: 0 5px 15px rgba(0,0,0,0.12);
+}
+
+.payroll-details h5 {
+  text-align: center;
+  font-weight: 700;
+  color: var(--primary-dark, #2a3d66);
+  margin-bottom: 22px;
+  letter-spacing: 0.5px;
+}
+
+/* Grid layout for Earnings and Deductions */
+.payroll-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 35px;
+  margin-bottom: 28px;
+}
+
+/* Section headings */
+.payroll-section h6 {
+  background: var(--primary-light, #e6f0ff);
+  color: var(--primary-dark, #1e3c72);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* Earnings/Deductions item list */
+.payroll-section ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.payroll-section li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dashed #ddd;
+  font-size: 0.92rem;
+  color: #444;
+}
+
+.payroll-section li span {
+  color: #333;
+  font-weight: 500;
+}
+
+/* Summary Section */
+.payroll-summary {
+  border-top: 2px solid var(--primary, #adadad);
+  padding-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 1rem;
+}
+
+.payroll-summary div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.payroll-summary div b {
+  color: var(--primary-dark, #2a3d66);
+}
+
+.payroll-summary .net {
+  color: #1aa260;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .payroll-details {
+    padding: 18px 20px;
+  }
+
+  .payroll-section li {
+    font-size: 0.9rem;
+  }
+}
+
+/* Transparent "Show Details" icon button */
+.btn-showdetails {
+  background: transparent;
+  border: none;
+  color: var(--primary, #1e90ff);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  padding: 4px 10px;
+}
+
+.btn-showdetails:hover {
+  color: var(--primary-dark, #1256a0);
+  transform: translateY(-1px);
+}
+
+.btn-showdetails:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Optional: rotate icon when expanded */
+button[aria-expanded="true"] i {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease;
+}
+
