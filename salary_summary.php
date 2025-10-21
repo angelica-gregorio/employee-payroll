@@ -272,13 +272,18 @@ $dateRanges = [
                         }
                     }
 
-                    if ($note === 'ca' || $note === 'uniform') {
+                    if ($note === 'uniform' || $note === 'ca') {
                         $shiftDate = $row['ShiftDate'];
                         if (!in_array($shiftDate, $data[$name]['CAUniformDates'])) {
-                            $data[$name]['CAUniform'] += 106;
+                            if ($note === 'uniform') {
+                                $data[$name]['CAUniform'] += 106; // add ₱106 per uniform
+                            } elseif ($note === 'ca') {
+                                $data[$name]['CAUniform'] += 500; // add ₱500 per CA
+                            }
                             $data[$name]['CAUniformDates'][] = $shiftDate;
                         }
                     }
+
                 }
 
                 echo "<div class='table-responsive'>
