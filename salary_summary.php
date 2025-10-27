@@ -17,23 +17,24 @@ function showValue($val)
 
 /* MONTH RANGE */
 $dateRanges = [
-    'January' => '01',
-    'February' => '02',
-    'March' => '03',
-    'April' => '04',
-    'May' => '05',
-    'June' => '06',
-    'July' => '07',
-    'August' => '08',
-    'September' => '09',
-    'October' => '10',
-    'November' => '11',
-    'December' => '12'
+    'January' => ['01-01 to 01-31'],
+    'February' => ['02-01 to 02-28'],
+    'March' => ['03-01 to 03-31'],
+    'April' => ['04-01 to 04-30'],
+    'May' => ['05-01 to 05-31'],
+    'June' => ['06-01 to 06-30'],
+    'July' => ['07-01 to 07-31'],
+    'August' => ['08-01 to 08-31'],
+    'September' => ['09-01 to 09-30'],
+    'October' => ['10-01 to 10-31'],
+    'November' => ['11-01 to 11-30'],
+    'December' => ['12-01 to 12-31']
 ];
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Salary Summary</title>
@@ -42,29 +43,9 @@ $dateRanges = [
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
     <link href="salary_summary.css" rel="stylesheet">
-    <style>
-        .modal-header { background-color: var(--primary); color: white; }
-        .modal-body { background-color: #f8f9fa; }
-        .week-option { 
-            padding: 15px; 
-            border: 2px solid #ddd; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            transition: all 0.3s;
-            text-align: center;
-            font-weight: 500;
-        }
-        .week-option:hover { 
-            background-color: #e9ecef; 
-            border-color: #0d6efd;
-        }
-        .week-option.selected { 
-            background-color: #0d6efd; 
-            color: white; 
-            border-color: #0d6efd; 
-        }
-    </style>
+
 </head>
+
 <body class="d-flex flex-column min-vh-100">
 
     <!-- NAVBAR -->
@@ -72,14 +53,12 @@ $dateRanges = [
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <span class="navbar-brand mb-0 h1 fw-bold" style="color: var(--text-light);">
                 <img src="office-building.png" alt="Company Logo"
-                     style="height:32px;vertical-align:middle;margin-right:10px;filter: brightness(0) invert(1);">
+                    style="height:32px;vertical-align:middle;margin-right:10px;filter: brightness(0) invert(1);">
                 EMPLOYEE MANAGEMENT SYSTEM
             </span>
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <a href="index.php" class="btn btn-outline-secondary">Dashboard</a>
                 <a href="salary_summary.php" class="btn btn-outline-primary">Salary Summary</a>
-                <a href="employees.php" class="btn btn-outline-secondary">Employees</a>
-
             </div>
         </div>
     </nav>
@@ -87,57 +66,71 @@ $dateRanges = [
     <div class="container my-4">
         <h2 class="text-center mb-4 fw-bold">SALARY SUMMARY</h2>
 
-        <div class="container my-4">
-            <h4 class="text-center">Select a Month</h4>
-            <form method="GET" class="d-flex justify-content-center align-items-center gap-2 mb-4">
-                <select name="month" class="form-select" style="max-width:200px;">
-                    <?php foreach ($dateRanges as $month => $num): ?>
-                        <option value="<?= $num ?>"><?= $month ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <button type="submit" class="btn btn-primary">Generate</button>
-            </form>
-        </div>
+        <h4 class="text-center">Select a Week or Month</h4>
+        <form method="GET" class="d-flex justify-content-center align-items-center gap-2 mb-4">
+            <?php $selectedWeek = isset($_GET['week']) ? (int) $_GET['week'] : 1; ?>
+            <select name="week" class="form-select" style="max-width:280px;">
+                <option value="1" <?= ($selectedWeek === 1) ? 'selected' : '' ?>>Week 1</option>
+                <option value="2" <?= ($selectedWeek === 2) ? 'selected' : '' ?>>Week 2</option>
+                <option value="3" <?= ($selectedWeek === 3) ? 'selected' : '' ?>>Week 3</option>
+                <option value="4" <?= ($selectedWeek === 4) ? 'selected' : '' ?>>Week 4</option>
+                <option value="5" <?= ($selectedWeek === 5) ? 'selected' : '' ?>>Whole Month of January</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Generate</button>
+        </form>
 
         <?php
-        if (isset($_GET['month'])) {
-            $selectedMonthNum = $_GET['month'];
-            $selectedMonthName = array_search($selectedMonthNum, $dateRanges);
-            $start = date('Y') . "-$selectedMonthNum-03";
-            $end = date('Y') . "-$selectedMonthNum-30";
+        if (isset($_GET['week'])) {
+            $weeks = [
+                1 => ['label' => 'January 3 to January 9', 'start' => date('Y') . '-01-03', 'end' => date('Y') . '-01-09'],
+                2 => ['label' => 'January 10 to January 16', 'start' => date('Y') . '-01-10', 'end' => date('Y') . '-01-16'],
+                3 => ['label' => 'January 17 to January 23', 'start' => date('Y') . '-01-17', 'end' => date('Y') . '-01-23'],
+                4 => ['label' => 'January 24 to January 30', 'start' => date('Y') . '-01-24', 'end' => date('Y') . '-01-30'],
+                5 => ['label' => 'January 3 to January 30', 'start' => date('Y') . '-01-03', 'end' => date('Y') . '-01-30']
+            ];
+
+            $selectedWeek = (int) $_GET['week'];
+            if (!isset($weeks[$selectedWeek])) {
+                echo "<div class='alert alert-danger text-center'>Invalid week selected.</div>";
+                exit;
+            }
+
+            $weekLabel = $weeks[$selectedWeek]['label'];
+            $start = $weeks[$selectedWeek]['start'];
+            $end = $weeks[$selectedWeek]['end'];
 
             echo "<h5 class='text-center text-success mb-3'>
-                    Showing salaries for <b>$selectedMonthName</b> (03–30)
-                  </h5>";
+            Showing salaries for <b>$weekLabel</b>
+          </h5>";
 
             $sql = "
-                SELECT 
-                    e.EmpID,
-                    t.Name,
-                    t.ShiftDate,
-                    t.ShiftNo,
-                    t.DutyType,
-                    t.Hours,
-                    t.Business_Unit,
-                    t.Role,
-                    t.TimeIN,
-                    t.TimeOUT,
-                    t.Notes,
-                    t.Deductions,
-                    e.Rate,
-                    e.SSS,
-                    e.PHIC,
-                    e.HDMF,
-                    e.GOVT,
-                    h.Type AS HolidayType,
-                    h.Rate AS HolidayRate,
-                    e.Email
-                FROM timesheet t
-                JOIN employees e ON t.Name = e.Name
-                LEFT JOIN holidays h ON t.ShiftDate = h.Date
-                WHERE t.ShiftDate BETWEEN '$start' AND '$end'
-                ORDER BY t.Name, t.ShiftDate
-            ";
+        SELECT 
+            e.EmpID,
+            t.Name,
+            t.ShiftDate,
+            t.ShiftNo,
+            t.DutyType,
+            t.Hours,
+            t.Business_Unit,
+            t.Role,
+            t.TimeIN,
+            t.TimeOUT,
+            t.Notes,
+            t.Deductions,
+            e.Rate,
+            e.SSS,
+            e.PHIC,
+            e.HDMF,
+            e.GOVT,
+            h.Type AS HolidayType,
+            h.Rate AS HolidayRate,
+            e.Email
+        FROM timesheet t
+        JOIN employees e ON t.Name = e.Name
+        LEFT JOIN holidays h ON t.ShiftDate = h.Date
+        WHERE t.ShiftDate BETWEEN '$start' AND '$end'
+        ORDER BY t.Name, t.ShiftDate
+    ";
 
             $result = $conn->query($sql);
 
@@ -147,15 +140,13 @@ $dateRanges = [
                 while ($row = $result->fetch_assoc()) {
                     $empID = $row['EmpID'];
                     $name = $row['Name'];
-                    $rate = (float)$row['Rate'];
+                    $rate = (float) $row['Rate'];
                     $role = strtolower(trim($row['Role']));
-                    $shift = (int)$row['ShiftNo'];
-                    $hours = (float)$row['Hours'];
+                    $shift = (int) $row['ShiftNo'];
+                    $hours = (float) $row['Hours'];
                     $note = strtolower(trim($row['Notes']));
-                    $holidayRate = (float)$row['HolidayRate'];
-                    $deductVal = isset($row['Deductions'])
-                        ? abs((float)str_replace('-', '', $row['Deductions']))
-                        : 0;
+                    $holidayRate = (float) $row['HolidayRate'];
+                    $deductVal = isset($row['Deductions']) ? abs((float) str_replace('-', '', $row['Deductions'])) : 0;
 
                     if (!isset($data[$name])) {
                         $data[$name] = [
@@ -171,18 +162,20 @@ $dateRanges = [
                             'SILBonus' => 0,
                             'Shortage' => 0,
                             'CAUniform' => 0,
-                            'SSS' => (float)$row['SSS'],
-                            'PHIC' => (float)$row['PHIC'],
-                            'HDMF' => (float)$row['HDMF'],
-                            'GOVT' => (float)$row['GOVT'],
+                            'SSS' => (float) $row['SSS'],
+                            'PHIC' => (float) $row['PHIC'],
+                            'HDMF' => (float) $row['HDMF'],
+                            'GOVT' => (float) $row['GOVT'],
                             'LateDeduction' => 0
                         ];
                     }
 
                     $validTime = '/^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/';
-                    if (!empty($row['ShiftDate']) &&
+                    if (
+                        !empty($row['ShiftDate']) &&
                         preg_match($validTime, trim($row['TimeIN'])) &&
-                        preg_match($validTime, trim($row['TimeOUT']))) {
+                        preg_match($validTime, trim($row['TimeOUT']))
+                    ) {
                         $data[$name]['DaysWorked'][$row['ShiftDate']] = true;
                     }
 
@@ -201,48 +194,89 @@ $dateRanges = [
                         $timeIn > $timeOut);
                     $isSIL = ($note === 'sil');
 
-                    if (($isNightShift || $isSIL) &&
-                        !in_array($shiftDate, $data[$name]['NightDates'])) {
+                    if (
+                        ($isNightShift || $isSIL) &&
+                        !in_array($shiftDate, $data[$name]['NightDates'])
+                    ) {
                         $data[$name]['NightShifts']++;
                         $data[$name]['NightDates'][] = $shiftDate;
                     }
 
-                    // HOLIDAY PAY 
+                    // ✅ REVISED HOLIDAY FORMULA (COMBINED BASE PAY + HOLIDAY PAY)
+                    $shiftDate = $row['ShiftDate'];
+                    $worked = !empty($row['TimeIN']) && $row['TimeIN'] != '00:00:00';
+                    $holidayPay = 0;
+
+                    // --- Check for regular holidays in the selected range (for auto-grant) ---
+                    $regularHolidays = [];
+                    $holidayQuery = $conn->query("
+                        SELECT Date 
+                        FROM holidays 
+                        WHERE Type = 'Regular Holiday'
+                        AND Date BETWEEN '$start' AND '$end'
+                    ");
+                    if ($holidayQuery && $holidayQuery->num_rows > 0) {
+                        while ($h = $holidayQuery->fetch_assoc()) {
+                            $regularHolidays[] = $h['Date'];
+                        }
+                    }
+
                     if (!empty($row['HolidayType'])) {
-                        $shiftDate = $row['ShiftDate'];
                         $holidayType = strtolower(trim($row['HolidayType']));
 
-                        if (!isset($data[$name]['HolidayDates'])) {
-                            $data[$name]['HolidayDates'] = [];
+
+                        if ($holidayType === 'special holiday' || $holidayType === 'special non-working holiday') {
+                            if ($worked) {
+                                $holidayPay = $rate * 0.3;
+                            } else {
+                                $holidayPay = 0;
+                            }
                         }
 
+                        // Add once per actual holiday date
+                        if (!isset($data[$name]['HolidayDates']))
+                            $data[$name]['HolidayDates'] = [];
                         if (!in_array($shiftDate, $data[$name]['HolidayDates'])) {
-                            $data[$name]['HolidayDates'][] = $shiftDate;
-
-                            $holidayPay = 0;
-                            if ($holidayType === 'regular holiday') {
-                                $holidayPay = $rate * 1;
-                            } elseif ($holidayType === 'special holiday') {
-                                $holidayPay = $rate * 0.3;
-                            }
-
                             $data[$name]['HolidayPay'] += $holidayPay;
+                            $data[$name]['HolidayDates'][] = $shiftDate;
+                        }
+
+                    } else {
+                        // --- Auto-grant for all Regular Holidays not yet given ---
+                        if (!isset($data[$name]['AutoHolidayGiven']))
+                            $data[$name]['AutoHolidayGiven'] = [];
+                        if (!isset($data[$name]['HolidayDates']))
+                            $data[$name]['HolidayDates'] = [];
+
+                        foreach ($regularHolidays as $rDate) {
+                            // Give only if not already worked or tagged as holiday
+                            if (
+                                !in_array($rDate, $data[$name]['AutoHolidayGiven']) &&
+                                !in_array($rDate, $data[$name]['HolidayDates'])
+                            ) {
+                                $data[$name]['HolidayPay'] += $rate * 1.0; // +100% per regular holiday
+                                $data[$name]['AutoHolidayGiven'][] = $rDate;
+                            }
                         }
                     }
 
                     // OVERTIME
-                    if (!isset($data[$name]['OvertimeDates'])) $data[$name]['OvertimeDates'] = [];
-                    if (strcasecmp(trim($row['DutyType']), 'Overtime') === 0 &&
-                        is_numeric($row['Hours'])) {
+                    if (!isset($data[$name]['OvertimeDates']))
+                        $data[$name]['OvertimeDates'] = [];
+                    if (
+                        strcasecmp(trim($row['DutyType']), 'Overtime') === 0 &&
+                        is_numeric($row['Hours'])
+                    ) {
                         $shiftDate = $row['ShiftDate'];
                         if (!in_array($shiftDate, $data[$name]['OvertimeDates'])) {
-                            $data[$name]['OvertimeHrs'] += (float)$row['Hours'];
+                            $data[$name]['OvertimeHrs'] += (float) $row['Hours'];
                             $data[$name]['OvertimeDates'][] = $shiftDate;
                         }
                     }
 
                     // LATE DEDUCTION
-                    if (!isset($data[$name]['LateDates'])) $data[$name]['LateDates'] = [];
+                    if (!isset($data[$name]['LateDates']))
+                        $data[$name]['LateDates'] = [];
                     if (strtolower(trim($row['DutyType'])) === 'late') {
                         $shiftDate = $row['ShiftDate'];
                         if (!in_array($shiftDate, $data[$name]['LateDates'])) {
@@ -261,8 +295,10 @@ $dateRanges = [
                         }
                     }
 
-                    if (!isset($data[$name]['ShortageDates'])) $data[$name]['ShortageDates'] = [];
-                    if (!isset($data[$name]['CAUniformDates'])) $data[$name]['CAUniformDates'] = [];
+                    if (!isset($data[$name]['ShortageDates']))
+                        $data[$name]['ShortageDates'] = [];
+                    if (!isset($data[$name]['CAUniformDates']))
+                        $data[$name]['CAUniformDates'] = [];
 
                     if ($note === 'short') {
                         $shiftDate = $row['ShiftDate'];
@@ -276,14 +312,13 @@ $dateRanges = [
                         $shiftDate = $row['ShiftDate'];
                         if (!in_array($shiftDate, $data[$name]['CAUniformDates'])) {
                             if ($note === 'uniform') {
-                                $data[$name]['CAUniform'] += 106; // add ₱106 per uniform
+                                $data[$name]['CAUniform'] += 106;
                             } elseif ($note === 'ca') {
-                                $data[$name]['CAUniform'] += 500; // add ₱500 per CA
+                                $data[$name]['CAUniform'] += 500;
                             }
                             $data[$name]['CAUniformDates'][] = $shiftDate;
                         }
                     }
-
                 }
 
                 echo "<div class='table-responsive'>
@@ -313,9 +348,9 @@ $dateRanges = [
                     ";
                     $out = $conn->query($numDayQuery);
                     $row = $out ? $out->fetch_assoc() : ['daysWorked' => 0];
-                    $days = (int)$row['daysWorked'];
+                    $days = (int) $row['daysWorked'];
 
-                    $rate = (float)$emp['Rate'];
+                    $rate = (float) $emp['Rate'];
                     $rate2 = $rate / 8;
                     $overtimePay = $emp['OvertimeHrs'] * $rate2;
 
@@ -342,7 +377,7 @@ $dateRanges = [
                         $totalHours = 0;
                         if ($resShifts && $resShifts->num_rows > 0) {
                             while ($tsRow = $resShifts->fetch_assoc()) {
-                                $totalHours += (float)$tsRow['Hours'];
+                                $totalHours += (float) $tsRow['Hours'];
                             }
                         }
 
@@ -408,33 +443,39 @@ $dateRanges = [
                     $phic = $emp['PHIC'];
                     $hdmf = $emp['HDMF'];
                     $govt = $emp['GOVT'];
-                    $totalDeductions = $sss + $phic + $hdmf + $govt + $lateDeduction + $shortage + $caUniform;
-                    $net = $gross - $totalDeductions;
 
-                    $empData = json_encode([
-                        'EmpID' => $emp['EmpID'],
-                        'Name' => $name,
-                        'Email' => $emp['Email'],
-                        'Rate' => $rate,
-                        'Days' => $days,
-                        'BasePay' => $basePay,
-                        'OvertimeHrs' => $emp['OvertimeHrs'],
-                        'OvertimePay' => $overtimePay,
-                        'Allowance' => $allowance,
-                        'NightDiff' => $nightDiff,
-                        'Holiday' => $holiday,
-                        'SILBonus' => $silBonus,
-                        'SSS' => $sss,
-                        'PHIC' => $phic,
-                        'HDMF' => $hdmf,
-                        'GOVT' => $govt,
-                        'LateDeduction' => $lateDeduction,
-                        'Shortage' => $shortage,
-                        'CAUniform' => $caUniform,
-                        'TotalDeductions' => $totalDeductions,
-                        'Gross' => $gross,
-                        'Net' => $net
-                    ]);
+
+                    // === CONDITIONAL DEDUCTIONS BASED ON WEEK === //
+                    $sss_deduction = 0;
+                    $phic_deduction = 0;
+                    $hdmf_deduction = 0;
+                    $govt_deduction = 0;
+
+                    // Apply deductions only for specific weeks
+                    if ($selectedWeek == 2) {
+                        // Week 2 → SSS only
+                        $sss_deduction = $sss;
+                    } elseif ($selectedWeek == 3) {
+                        // Week 3 → PHIC and HDMF only
+                        $phic_deduction = $phic;
+                        $hdmf_deduction = $hdmf;
+                    } elseif ($selectedWeek == 4) {
+                        // Week 4 → Govt Loan only
+                        $govt_deduction = $govt;
+                    } elseif ($selectedWeek == 5) {
+                        // Whole month → All deductions
+                        $sss_deduction = $sss;
+                        $phic_deduction = $phic;
+                        $hdmf_deduction = $hdmf;
+                        $govt_deduction = $govt;
+                    }
+                    // Week 1 automatically has all set to 0 → no deductions
+        
+                    $totalDeductions = $sss_deduction + $phic_deduction + $hdmf_deduction + $govt_deduction
+                        + $lateDeduction + $shortage + $caUniform;
+
+
+                    $net = $gross - $totalDeductions;
 
                     echo "<tr>
                             <td>{$emp['EmpID']}</td>
@@ -448,9 +489,10 @@ $dateRanges = [
                                 <i class='bi bi-chevron-down'></i>
                                 </button>
 
-                                <button class='btn btn-primary btn-sm' type='button' data-bs-toggle='modal' data-bs-target='#payslipModal' onclick='openPayslipModal(" . htmlspecialchars($empData, ENT_QUOTES) . ")'>
+                                <a href='generate_payslip.php?name=" . urlencode($name) .
+                        "&email=" . urlencode($emp['Email']) . "' class='btn btn-primary btn-sm'>
                                     Payslip
-                                </button>
+                                </a>
                             </td>
                         </tr>
                         <tr class='collapse' id='details_$emp[EmpID]'>
@@ -477,10 +519,10 @@ $dateRanges = [
                 <div class='payroll-section'>
                     <h6>Deductions</h6>
                     <ul>
-                        <li><span>SSS:</span> ₱" . number_format($sss, 2) . "</li>
-                        <li><span>PHIC:</span> ₱" . number_format($phic, 2) . "</li>
-                        <li><span>HDMF:</span> ₱" . number_format($hdmf, 2) . "</li>
-                        <li><span>GOVT Loan:</span> ₱" . number_format($govt, 2) . "</li>
+                        " . (($selectedWeek == 2 || $selectedWeek == 5) ? "<li><span>SSS:</span> ₱" . number_format($sss_deduction, 2) . "</li>" : "") . "
+                        " . (($selectedWeek == 3 || $selectedWeek == 5) ? "<li><span>PHIC:</span> ₱" . number_format($phic_deduction, 2) . "</li>" : "") . "
+                        " . (($selectedWeek == 3 || $selectedWeek == 5) ? "<li><span>HDMF:</span> ₱" . number_format($hdmf_deduction, 2) . "</li>" : "") . "
+                        " . (($selectedWeek == 4 || $selectedWeek == 5) ? "<li><span>GOVT Loan:</span> ₱" . number_format($govt_deduction, 2) . "</li>" : "") . "
                         <li><span>Late Deduction:</span> ₱" . number_format($lateDeduction, 2) . "</li>
                         <li><span>Shortage:</span> ₱" . number_format($shortage, 2) . "</li>
                         <li><span>CA/Uniform:</span> ₱" . number_format($caUniform, 2) . "</li>
@@ -506,153 +548,13 @@ $dateRanges = [
         ?>
     </div>
 
-    <!-- Payslip Modal -->
-    <div class="modal fade" id="payslipModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Generate Payslip</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="empInfo" class="mb-4"></div>
-                    
-                    <h6 class="mb-3"><strong>Select Date Range (Weekly):</strong></h6>
-                    <div id="weeklyOptions" class="row g-3 mb-4"></div>
-
-                    <div class="d-flex gap-2 justify-content-center flex-wrap">
-                        <button class="btn btn-success" id="downloadBtn" onclick="downloadPayslip()">
-                            Download PDF
-                        </button>
-                        <button class="btn btn-info" id="emailBtn" onclick="sendEmail()">
-                            Send to Email
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <footer class="text-center py-3 mt-auto sticky-footer"
-            style="background: var(--surface); color: var(--primary-dark);
+    <footer class="text-center py-3 mt-auto sticky-footer" style="background: var(--surface); color: var(--primary-dark);
                    font-size: 1.05rem; border-top: 1px solid var(--primary-light);">
         Powered by <strong>Angelica Gregorio</strong> and <strong>Ysabella Santos</strong>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        let selectedEmp = null;
-        let selectedWeek = null;
-
-        function openPayslipModal(empData) {
-            selectedEmp = empData;
-            selectedWeek = null;
-
-            const infoHtml = `
-                <div class="alert alert-info">
-                    <strong>${empData.Name}</strong> (ID: ${empData.EmpID})<br>
-                    <small>Email: ${empData.Email}</small>
-                </div>
-            `;
-            document.getElementById('empInfo').innerHTML = infoHtml;
-
-            const monthNum = '<?php echo isset($_GET['month']) ? $_GET['month'] : '01'; ?>';
-            const year = '<?php echo date('Y'); ?>';
-            
-            const weeklyOptions = [
-                { label: 'Week 03-09', start: `${year}-${monthNum}-03`, end: `${year}-${monthNum}-09` },
-                { label: 'Week 10-16', start: `${year}-${monthNum}-10`, end: `${year}-${monthNum}-16` },
-                { label: 'Week 17-23', start: `${year}-${monthNum}-17`, end: `${year}-${monthNum}-23` },
-                { label: 'Week 24-30', start: `${year}-${monthNum}-24`, end: `${year}-${monthNum}-30` }
-            ];
-
-            let htmlOptions = '';
-            weeklyOptions.forEach((week, idx) => {
-                htmlOptions += `
-                    <div class="col-md-6">
-                        <div class="week-option" onclick="selectWeek(${idx}, this, '${week.label}', '${week.start}', '${week.end}')">
-                            <strong>${week.label}</strong>
-                        </div>
-                    </div>
-                `;
-            });
-            document.getElementById('weeklyOptions').innerHTML = htmlOptions;
-        }
-
-        function selectWeek(idx, element, label, start, end) {
-            document.querySelectorAll('.week-option').forEach(el => el.classList.remove('selected'));
-            element.classList.add('selected');
-            selectedWeek = { label: label, start: start, end: end };
-        }
-
-        function downloadPayslip() {
-            if (!selectedWeek) {
-                alert('Please select a week first!');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('empName', selectedEmp.Name);
-            formData.append('empID', selectedEmp.EmpID);
-            formData.append('weekLabel', selectedWeek.label);
-            formData.append('weekStart', selectedWeek.start);
-            formData.append('weekEnd', selectedWeek.end);
-
-            fetch('generate_payslip_pdf.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('Network response was not ok');
-                return response.blob();
-            })
-            .then(blob => {
-                const blobUrl = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = blobUrl;
-                link.download = `Payslip_${selectedEmp.Name}_${selectedWeek.label}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(blobUrl);
-                alert('Payslip downloaded successfully!');
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to download payslip. Check console for details.');
-            });
-        }
-
-        function sendEmail() {
-            if (!selectedWeek) {
-                alert('Please select a week first!');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('empName', selectedEmp.Name);
-            formData.append('empEmail', selectedEmp.Email);
-            formData.append('empID', selectedEmp.EmpID);
-            formData.append('weekLabel', selectedWeek.label);
-            formData.append('weekStart', selectedWeek.start);
-            formData.append('weekEnd', selectedWeek.end);
-
-            fetch('send_payslip_email.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message || 'Email sent!');
-                if (data.success) {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('payslipModal'));
-                    if (modal) modal.hide();
-                }
-            })
-            .catch(err => alert('Error: ' + err.message));
-        }
-    </script>
     <script src="script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
