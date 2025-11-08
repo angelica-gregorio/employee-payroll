@@ -1,37 +1,174 @@
 <?php
-// ✅ Enable error reporting during development
+// send_bulk_payslips.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// ✅ Clear output buffer (prevents PDF corruption)
-if (ob_get_level()) ob_end_clean();
-
-// ✅ Include FPDF
 require_once(__DIR__ . '/fpdf/fpdf.php');
-
-// ✅ Connect to DB
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+require 'PHPMailer/src/Exception.php';
+require 'PHPMailer/src/PHPMailer.php';
+require 'PHPMailer/src/SMTP.php';
+// Database connection
 $conn = new mysqli("localhost", "root", "", "act05");
 if ($conn->connect_error) {
-    http_response_code(500);
-    exit("Database connection failed: " . $conn->connect_error);
+    die("Connection failed: " . $conn->connect_error);
 }
 
-// ✅ Get POST data
-$empName   = trim($_POST['empName'] ?? '');
-$empID     = trim($_POST['empID'] ?? '');
-$weekLabel = trim($_POST['weekLabel'] ?? '');
-$weekStart = trim($_POST['weekStart'] ?? '');
-$weekEnd   = trim($_POST['weekEnd'] ?? '');
+// Get POST data
+$employees = isset($_POST['employees']) ? $_POST['employees'] : [];
+$weekLabel = $_POST['weekLabel'] ?? '';
+$weekStart = $_POST['weekStart'] ?? '';
+$weekEnd = $_POST['weekEnd'] ?? '';
 $selectedWeek = isset($_POST['selectedWeek']) ? (int)$_POST['selectedWeek'] : 1;
 
-if (!$empName || !$weekStart || !$weekEnd) {
-    http_response_code(400);
-    exit("❌ Missing required data (empName, weekStart, weekEnd)");
+if (empty($employees)) {
+    die("No employees selected.");
 }
 
-$nameEsc = $conn->real_escape_string($empName);
+$successCount = 0;
+$failedEmails = [];
+$results = [];
 
-// ✅ Fetch employee and timesheet data (EXACT SAME QUERY as salary_summary.php)
+foreach ($employees as $empData) {
+    $empInfo = json_decode($empData, true);
+    if (!$empInfo) continue;
+    
+    $empName = $empInfo['name'];
+    $empID = $empInfo['empID'];
+    $empEmail = $empInfo['email'];
+    
+    if (empty($empEmail)) {
+        $failedEmails[] = "$empName (No email address)";
+        continue;
+    }
+    
+    // Generate PDF for this employee
+    try {
+        $pdfContent = generatePayslipPDF($empName, $empID, $weekLabel, $weekStart, $weekEnd, $selectedWeek, $conn);
+        
+        // Send email with PDF attachment
+        $emailSent = sendPayslipEmail($empName, $empEmail, $weekLabel, $pdfContent);
+        
+        if ($emailSent) {
+            $successCount++;
+            $results[] = "✓ $empName - Sent to $empEmail";
+        } else {
+            $failedEmails[] = "$empName ($empEmail)";
+            $results[] = "✗ $empName - Failed to send";
+        }
+    } catch (Exception $e) {
+        $failedEmails[] = "$empName - " . $e->getMessage();
+        $results[] = "✗ $empName - Error: " . $e->getMessage();
+    }
+}
+
+
+// Display results
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payslip Email Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .result-container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .success-icon {
+            color: #28a745;
+            font-size: 64px;
+        }
+        .warning-icon {
+            color: #ffc107;
+            font-size: 64px;
+        }
+        .result-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 6px;
+            font-family: monospace;
+        }
+        .result-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .result-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="result-container">
+        <div class="text-center mb-4">
+            <?php if (empty($failedEmails)): ?>
+                <i class="bi bi-check-circle-fill success-icon"></i>
+                <h2 class="mt-3">All Payslips Sent Successfully!</h2>
+                <p class="text-muted">Sent <?= $successCount ?> payslip(s)</p>
+            <?php else: ?>
+                <i class="bi bi-exclamation-triangle-fill warning-icon"></i>
+                <h2 class="mt-3">Payslips Sent with Some Errors</h2>
+                <p class="text-muted">Successfully sent: <?= $successCount ?> | Failed: <?= count($failedEmails) ?></p>
+            <?php endif; ?>
+        </div>
+        
+        <div class="mb-4">
+            <h5>Details:</h5>
+            <?php foreach ($results as $result): ?>
+                <?php 
+                $isSuccess = strpos($result, '✓') !== false;
+                $class = $isSuccess ? 'result-success' : 'result-failed';
+                ?>
+                <div class="result-item <?= $class ?>"><?= htmlspecialchars($result) ?></div>
+            <?php endforeach; ?>
+        </div>
+        
+        <?php if (!empty($failedEmails)): ?>
+            <div class="alert alert-danger">
+                <strong>Failed to send to:</strong>
+                <ul class="mb-0 mt-2">
+                    <?php foreach ($failedEmails as $failed): ?>
+                        <li><?= htmlspecialchars($failed) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+        
+        <div class="text-center mt-4">
+            <a href="salary_summary.php?week=<?= $selectedWeek ?>" class="btn btn-primary">
+                <i class="bi bi-arrow-left"></i> Back to Salary Summary
+            </a>
+        </div>
+    </div>
+</body>
+</html>
+
+<?php
+
+// ============================================
+// FUNCTION: Generate Payslip PDF
+// ============================================
+function generatePayslipPDF($empName, $empID, $weekLabel, $weekStart, $weekEnd, $selectedWeek, $conn) {
+    $nameEsc = $conn->real_escape_string($empName);
+    
+ // ✅ Fetch employee and timesheet data (EXACT SAME QUERY as salary_summary.php)
 $sql = "
 SELECT 
     e.EmpID,
@@ -349,7 +486,7 @@ $totalDeductions = $sss_deduction + $phic_deduction + $hdmf_deduction + $govt_de
     + $lateDeduction + $shortage + $caUniform;
 $net = $gross - $totalDeductions;
 
-// ✅ Generate PDF
+ // ✅ Generate PDF
 $pdf = new FPDF();
 $pdf->AddPage();
 
@@ -481,8 +618,64 @@ $pdf->SetFont('Arial', 'I', 8);
 $pdf->Cell(0, 5, 'This is a computer-generated document. No signature required.', 0, 1, 'C');
 $pdf->Cell(0, 5, 'Generated on: ' . date('F d, Y h:i A'), 0, 1, 'C');
 
-// Output PDF
-$fileName = 'Payslip_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $empName) . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $weekLabel);
-$pdf->Output('D', $fileName . '.pdf');
-exit;
+    return $pdf->Output('S'); // Return PDF as string
+}
+
+// ============================================
+// FUNCTION: Calculate Allowance
+// ============================================
+function calculateAllowance($nameEsc, $role, $rate, $weekStart, $weekEnd, $conn) {
+    $allowance = 0;
+    $roleLower = strtolower($role);
+    
+    if ($roleLower === 'cashier') {
+        $query = "SELECT SUM(Hours) as totalHours FROM timesheet
+                  WHERE Name = '$nameEsc' AND Role = 'Cashier'
+                  AND ShiftDate BETWEEN '$weekStart' AND '$weekEnd'
+                  AND TimeIN != '00:00:00' AND TimeOUT != '00:00:00'";
+        $res = $conn->query($query);
+        $totalHours = $res ? (float)$res->fetch_assoc()['totalHours'] : 0;
+        $allowance = round($totalHours * 5, 2);
+    }
+    
+    if ($rate > 520) {
+        $query = "SELECT COUNT(DISTINCT ShiftDate) as workDays FROM timesheet
+                  WHERE Name = '$nameEsc' AND DutyType = 'OnDuty'
+                  AND ShiftDate BETWEEN '$weekStart' AND '$weekEnd'
+                  AND TimeIN != '00:00:00' AND TimeOUT != '00:00:00'";
+        $res = $conn->query($query);
+        $workDays = $res ? (int)$res->fetch_assoc()['workDays'] : 0;
+        $allowance += $workDays * 20;
+    }
+    
+    return $allowance;
+}
+
+// ============================================
+// FUNCTION: Send Email with PDF
+// ============================================
+function sendPayslipEmail($empName, $email, $weekLabel, $pdfContent) {
+    $mail = new PHPMailer(true);
+    try {
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'angelica_g_gregorio@dlsu.edu.ph';
+        $mail->Password = 'cgfi anha jgka oiqp'; // ❗ ideally load from config
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        $mail->setFrom('hr@company.com', 'HR Department');
+        $mail->addAddress($email, $empName);
+        $mail->Subject = "Your Payslip for $weekLabel";
+        $mail->Body = "Dear $empName,\n\nPlease find attached your payslip.\n\nBest,\nHR Department";
+        $mail->addStringAttachment($pdfContent, "payslip_" . str_replace(' ', '_', $empName) . ".pdf");
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Email to $email failed: " . $mail->ErrorInfo);
+        return false;
+    }
+}
 ?>

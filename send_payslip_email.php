@@ -42,7 +42,7 @@ if (!$empName || !$weekStart || !$weekEnd) {
 $sql = "SELECT 
     t.ShiftDate, t.ShiftNo, t.DutyType, t.Hours, t.Role, t.TimeIN, t.TimeOUT, 
     t.Notes, t.Deductions, e.Rate, e.SSS, e.PHIC, e.HDMF, e.GOVT, 
-    e.Email, h.Type AS HolidayType
+    e.Email, h.Type AS HolidayType, h.Rate AS HolidayRate
 FROM timesheet t
 JOIN employees e ON t.Name = e.Name
 LEFT JOIN holidays h ON t.ShiftDate = h.Date
@@ -59,12 +59,28 @@ if ($result->num_rows === 0) {
     exit;
 }
 
-// Initialize totals
-$daysWorked = $overtimeHrs = $nightShifts = $holidayPay = $cashierBonus = $silBonus = 0;
-$lateDeduction = $shortage = $caUniform = 0;
+// ✅ Initialize tracking arrays to prevent duplicates
+$processedDates = [];
+$overtimeDates = [];
+$nightDates = [];
+$holidayDates = [];
+$lateDates = [];
+$shortageDates = [];
+$caUniformDates = [];
+$silDates = [];
+
+// ✅ Initialize counters
+$overtimeHrs = 0;
+$nightShifts = 0;
+$holidayPay = 0;
+$silBonus = 0;
+$lateDeduction = 0;
+$shortage = 0;
+$caUniform = 0;
+
 $rate = $sss = $phic = $hdmf = $govt = 0;
 $email = "";
-$processedDates = [];
+$role = "";
 
 while ($row = $result->fetch_assoc()) {
     $rate = (float)$row['Rate'];
@@ -73,50 +89,173 @@ while ($row = $result->fetch_assoc()) {
     $hdmf = (float)$row['HDMF'];
     $govt = (float)$row['GOVT'];
     $email = $row['Email'] ?? '';
-    $shiftDate = $row['ShiftDate'];
+    $role = strtolower(trim($row['Role']));
 
-    // Count days worked
-    if (!in_array($shiftDate, $processedDates) && $row['TimeIN'] != '00:00:00' && $row['TimeOUT'] != '00:00:00') {
-        $daysWorked++;
+    $shiftDate = $row['ShiftDate'];
+    $note = strtolower(trim($row['Notes']));
+    $dutyType = trim($row['DutyType']);
+
+    // ✅ Count valid workday (only once per date)
+    $validTime = '/^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/';
+    if (!in_array($shiftDate, $processedDates) && 
+        preg_match($validTime, trim($row['TimeIN'])) && 
+        preg_match($validTime, trim($row['TimeOUT'])) &&
+        $row['TimeIN'] != '00:00:00' && 
+        $row['TimeOUT'] != '00:00:00') {
         $processedDates[] = $shiftDate;
     }
 
-    // Holiday pay
-    if (!empty($row['HolidayType'])) {
-        if (strtolower($row['HolidayType']) == 'regular holiday') $holidayPay += $rate * 1;
-        if (strtolower($row['HolidayType']) == 'special holiday') $holidayPay += $rate * 0.3;
-    }
-
-    // Overtime
-    if (strcasecmp($row['DutyType'], 'Overtime') === 0) {
+    // ✅ Overtime (one count per date)
+    if (!in_array($shiftDate, $overtimeDates) &&
+        strcasecmp($dutyType, 'Overtime') === 0 && 
+        is_numeric($row['Hours'])) {
         $overtimeHrs += (float)$row['Hours'];
+        $overtimeDates[] = $shiftDate;
     }
 
-    // Late deduction
-    if (strtolower(trim($row['DutyType'])) === 'late') {
+    // ✅ Night Differential (one count per date)
+    $timeIn = strtotime($row['TimeIN']);
+    $timeOut = strtotime($row['TimeOUT']);
+    $isNightShift = (!empty($row['TimeIN']) && 
+                     !empty($row['TimeOUT']) && 
+                     $timeIn > $timeOut);
+    $isSIL = ($note === 'sil');
+
+    if (!in_array($shiftDate, $nightDates) && 
+        ($isNightShift || $isSIL)) {
+        $nightShifts++;
+        $nightDates[] = $shiftDate;
+    }
+
+    // ✅ Holiday Pay (one count per date)
+    if (!in_array($shiftDate, $holidayDates) && 
+        !empty($row['HolidayType'])) {
+        $holidayType = strtolower(trim($row['HolidayType']));
+        
+        if ($holidayType === 'regular holiday') {
+            $holidayPay += $rate * 1;
+        } elseif ($holidayType === 'special holiday') {
+            $holidayPay += $rate * 0.3;
+        }
+        
+        $holidayDates[] = $shiftDate;
+    }
+
+    // ✅ Late Deductions (one count per date)
+    if (!in_array($shiftDate, $lateDates) && 
+        strtolower($dutyType) === 'late') {
         $lateDeduction += 150;
+        $lateDates[] = $shiftDate;
     }
 
-    // Cashier bonus
-    if (strtolower($row['Role']) === 'cashier' && (float)$row['Hours'] >= 8) {
-        $cashierBonus += 40;
+    // ✅ Shortage (one count per date)
+    if (!in_array($shiftDate, $shortageDates) && 
+        $note === 'short') {
+        $deductVal = isset($row['Deductions']) 
+            ? abs((float)str_replace('-', '', $row['Deductions'])) 
+            : 0;
+        $shortage += $deductVal;
+        $shortageDates[] = $shiftDate;
     }
 
-    // SIL bonus
-    if (strtolower(trim($row['Notes'])) === 'sil') {
-        $silBonus += $rate;
-    }
-
-    // Shortage or CA/uniform
-    if (strtolower(trim($row['Notes'])) === 'short') {
-        $shortage += abs((float)$row['Deductions']);
-    }
-    if (in_array(strtolower(trim($row['Notes'])), ['ca', 'uniform'])) {
+    // ✅ CA / Uniform (one count per date)
+    if (!in_array($shiftDate, $caUniformDates) && 
+        ($note === 'ca' || $note === 'uniform')) {
         $caUniform += 106;
+        $caUniformDates[] = $shiftDate;
+    }
+
+    // ✅ SIL Bonus (one count per date)
+    if (!in_array($shiftDate, $silDates) && 
+        $note === 'sil') {
+        $silBonus += $rate;
+        $silDates[] = $shiftDate;
     }
 }
 
-// Compute earnings
+$daysWorked = count($processedDates);
+
+$stmt->close();
+
+// ✅ Compute allowance (matching main page logic)
+$nameEsc = $conn->real_escape_string($empName);
+$allowance = 0;
+
+if ($role === 'cashier') {
+    // Cashier gets hourly bonus
+    $uniqueShiftsQuery = "
+        SELECT DISTINCT ShiftDate, ShiftNo, DutyType, Hours, Business_Unit, Notes
+        FROM timesheet
+        WHERE Name = '$nameEsc'
+          AND Role = 'Cashier'
+          AND ShiftDate BETWEEN '$weekStart' AND '$weekEnd'
+          AND TimeIN != '00:00:00'
+          AND TimeOUT != '00:00:00'
+          AND Hours IS NOT NULL
+          AND ShiftNo IS NOT NULL
+          AND DutyType IS NOT NULL
+        ORDER BY ShiftDate ASC, ShiftNo ASC
+    ";
+    $resShifts = $conn->query($uniqueShiftsQuery);
+    
+    $totalHours = 0;
+    if ($resShifts && $resShifts->num_rows > 0) {
+        while ($tsRow = $resShifts->fetch_assoc()) {
+            $totalHours += (float)$tsRow['Hours'];
+        }
+    }
+    
+    $cashierBonus = round($totalHours * 5, 2);
+    $dailyAllowance = 0;
+    
+    if ($rate > 520) {
+        $uniqueDaysQuery = "
+            SELECT DISTINCT ShiftDate
+            FROM timesheet
+            WHERE Name = '$nameEsc'
+              AND ShiftDate BETWEEN '$weekStart' AND '$weekEnd'
+              AND DutyType = 'OnDuty'
+              AND TimeIN != '00:00:00'
+              AND TimeOUT != '00:00:00'
+        ";
+        $daysRes = $conn->query($uniqueDaysQuery);
+        
+        if ($daysRes && $daysRes->num_rows > 0) {
+            $workDays = $daysRes->num_rows;
+            $dailyAllowance = $workDays * 20;
+        }
+    }
+    
+    $allowance = $cashierBonus + $dailyAllowance;
+} else {
+    // Non-cashier only gets daily allowance
+    $dailyAllowance = 0;
+    
+    if ($rate > 520) {
+        $uniqueDaysQuery = "
+            SELECT DISTINCT ShiftDate
+            FROM timesheet
+            WHERE Name = '$nameEsc'
+              AND ShiftDate BETWEEN '$weekStart' AND '$weekEnd'
+              AND DutyType = 'OnDuty'
+              AND TimeIN != '00:00:00'
+              AND TimeOUT != '00:00:00'
+        ";
+        $daysRes = $conn->query($uniqueDaysQuery);
+        
+        if ($daysRes && $daysRes->num_rows > 0) {
+            $workDays = $daysRes->num_rows;
+            $dailyAllowance = $workDays * 20;
+        }
+    }
+    
+    $allowance = $dailyAllowance;
+}
+
+// Close DB
+$conn->close();
+
+// ✅ Compute earnings
 $basePay = $rate * $daysWorked;
 $ratePerHour = $rate / 8;
 $overtimePay = $overtimeHrs * $ratePerHour;
@@ -140,60 +279,156 @@ if ($includeGovtDeductions) {
     $totalDeductions = $lateDeduction + $shortage + $caUniform;
 }
 
-$gross = $basePay + $overtimePay + $nightDiff + $holidayPay + $cashierBonus + $silBonus;
+$gross = $basePay + $overtimePay + $allowance + $nightDiff + $holidayPay + $silBonus;
 $net = $gross - $totalDeductions;
-
-// Close DB
-$stmt->close();
-$conn->close();
 
 // Format email HTML
 $html = '
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#f7f9fc;border-radius:10px;">
-    <h2 style="color:#2d6cdf;text-align:center;">Employee Payslip</h2>
-    <p style="text-align:center;color:#555;">For the period <b>' . htmlspecialchars($weekLabel) . '</b> (' . htmlspecialchars($weekStart) . ' → ' . htmlspecialchars($weekEnd) . ')</p>
+<div style="font-family:Arial,sans-serif;max-width:650px;margin:auto;padding:25px;background:#f7f9fc;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+    <div style="text-align:center;margin-bottom:25px;">
+        <h2 style="color:#2d6cdf;margin:0;font-size:28px;">Employee Payslip</h2>
+        <p style="color:#666;margin:8px 0 0 0;font-size:14px;">
+            Pay Period: <strong>' . htmlspecialchars($weekLabel) . '</strong><br>
+            <span style="font-size:12px;">(' . htmlspecialchars($weekStart) . ' to ' . htmlspecialchars($weekEnd) . ')</span>
+        </p>
+    </div>
     
-    <hr style="border:1px solid #ddd;">
-    <h3 style="color:#444;">Employee Details</h3>
-    <p><strong>Name:</strong> ' . htmlspecialchars($empName) . '</p>
-    <p><strong>ID:</strong> ' . htmlspecialchars($empID) . '</p>
-    <p><strong>Days Worked:</strong> ' . $daysWorked . '</p>
+    <div style="background:#fff;padding:20px;border-radius:8px;margin-bottom:15px;">
+        <h3 style="color:#333;margin-top:0;border-bottom:2px solid #2d6cdf;padding-bottom:8px;">Employee Information</h3>
+        <table style="width:100%;font-size:14px;">
+            <tr>
+                <td style="padding:6px 0;"><strong>Name:</strong></td>
+                <td style="padding:6px 0;">' . htmlspecialchars($empName) . '</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;"><strong>Employee ID:</strong></td>
+                <td style="padding:6px 0;">' . htmlspecialchars($empID) . '</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;"><strong>Days Worked:</strong></td>
+                <td style="padding:6px 0;">' . $daysWorked . '</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;"><strong>Daily Rate:</strong></td>
+                <td style="padding:6px 0;">₱' . number_format($rate, 2) . '</td>
+            </tr>
+        </table>
+    </div>
 
-    <hr style="border:1px solid #ddd;">
-    <h3 style="color:#444;">Earnings</h3>
-    <ul style="list-style:none;padding:0;">
-        <li>Base Pay: <b>P ' . number_format($basePay, 2) . '</b></li>
-        <li>Overtime (' . $overtimeHrs . ' hrs): <b>P ' . number_format($overtimePay, 2) . '</b></li>
-        <li>Night Differential: <b>P ' . number_format($nightDiff, 2) . '</b></li>
-        <li>Holiday Pay: <b>P ' . number_format($holidayPay, 2) . '</b></li>
-        <li>Cashier Bonus: <b>P ' . number_format($cashierBonus, 2) . '</b></li>
-        <li>SIL Bonus: <b>P ' . number_format($silBonus, 2) . '</b></li>
-    </ul>
-    <p><strong>Gross Income:</strong> P ' . number_format($gross, 2) . '</p>
+    <div style="background:#fff;padding:20px;border-radius:8px;margin-bottom:15px;">
+        <h3 style="color:#333;margin-top:0;border-bottom:2px solid #4caf50;padding-bottom:8px;">Earnings</h3>
+        <table style="width:100%;font-size:14px;">
+            <tr>
+                <td style="padding:6px 0;">Base Pay (' . $daysWorked . ' days)</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($basePay, 2) . '</strong></td>
+            </tr>';
 
-    <hr style="border:1px solid #ddd;">
-    <h3 style="color:#444;">Deductions</h3>
-    <ul style="list-style:none;padding:0;">';
+if ($overtimePay > 0) {
+    $html .= '<tr>
+                <td style="padding:6px 0;">Overtime (' . $overtimeHrs . ' hours @ ₱' . number_format($ratePerHour, 2) . '/hr)</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($overtimePay, 2) . '</strong></td>
+            </tr>';
+}
 
-if ($includeGovtDeductions) {
-    $html .= '
-        <li>SSS: <b>P ' . number_format($sss, 2) . '</b></li>
-        <li>PHIC: <b>P ' . number_format($phic, 2) . '</b></li>
-        <li>HDMF: <b>P ' . number_format($hdmf, 2) . '</b></li>
-        <li>GOVT: <b>P ' . number_format($govt, 2) . '</b></li>';
+if ($allowance > 0) {
+    $html .= '<tr>
+                <td style="padding:6px 0;">Allowance</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($allowance, 2) . '</strong></td>
+            </tr>';
+}
+
+if ($nightDiff > 0) {
+    $html .= '<tr>
+                <td style="padding:6px 0;">Night Differential (' . $nightShifts . ' shifts @ ₱52)</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($nightDiff, 2) . '</strong></td>
+            </tr>';
+}
+
+if ($holidayPay > 0) {
+    $html .= '<tr>
+                <td style="padding:6px 0;">Holiday Pay</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($holidayPay, 2) . '</strong></td>
+            </tr>';
+}
+
+if ($silBonus > 0) {
+    $html .= '<tr>
+                <td style="padding:6px 0;">SIL (Paid Leave)</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($silBonus, 2) . '</strong></td>
+            </tr>';
 }
 
 $html .= '
-        <li>Late Deduction: <b>P ' . number_format($lateDeduction, 2) . '</b></li>
-        <li>Shortage: <b>P ' . number_format($shortage, 2) . '</b></li>
-        <li>CA/Uniform: <b>P ' . number_format($caUniform, 2) . '</b></li>
-    </ul>
-    <p><strong>Total Deductions:</strong> P ' . number_format($totalDeductions, 2) . '</p>
-
-    <div style="margin-top:20px;padding:15px;background:#2d6cdf;color:#fff;border-radius:8px;text-align:center;">
-        <h3 style="margin:0;">Net Income: P ' . number_format($net, 2) . '</h3>
+            <tr style="border-top:2px solid #e0e0e0;">
+                <td style="padding:10px 0;font-size:15px;"><strong>GROSS INCOME</strong></td>
+                <td style="padding:10px 0;text-align:right;font-size:15px;color:#4caf50;"><strong>₱' . number_format($gross, 2) . '</strong></td>
+            </tr>
+        </table>
     </div>
-    <p style="color:#777;text-align:center;margin-top:10px;">Generated automatically by the Employee Management System</p>
+
+    <div style="background:#fff;padding:20px;border-radius:8px;margin-bottom:15px;">
+        <h3 style="color:#333;margin-top:0;border-bottom:2px solid #f44336;padding-bottom:8px;">Deductions</h3>
+        <table style="width:100%;font-size:14px;">';
+
+if ($includeGovtDeductions) {
+    $html .= '
+            <tr>
+                <td style="padding:6px 0;">SSS Contribution</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($sss, 2) . '</strong></td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;">PhilHealth (PHIC)</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($phic, 2) . '</strong></td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;">Pag-IBIG (HDMF)</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($hdmf, 2) . '</strong></td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;">Government Loan</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($govt, 2) . '</strong></td>
+            </tr>';
+}
+
+if ($lateDeduction > 0) {
+    $html .= '<tr>
+                <td style="padding:6px 0;">Late Deduction</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($lateDeduction, 2) . '</strong></td>
+            </tr>';
+}
+
+if ($shortage > 0) {
+    $html .= '<tr>
+                <td style="padding:6px 0;">Shortage</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($shortage, 2) . '</strong></td>
+            </tr>';
+}
+
+if ($caUniform > 0) {
+    $html .= '<tr>
+                <td style="padding:6px 0;">CA/Uniform</td>
+                <td style="padding:6px 0;text-align:right;"><strong>₱' . number_format($caUniform, 2) . '</strong></td>
+            </tr>';
+}
+
+$html .= '
+            <tr style="border-top:2px solid #e0e0e0;">
+                <td style="padding:10px 0;font-size:15px;"><strong>TOTAL DEDUCTIONS</strong></td>
+                <td style="padding:10px 0;text-align:right;font-size:15px;color:#f44336;"><strong>₱' . number_format($totalDeductions, 2) . '</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <div style="background:linear-gradient(135deg, #2d6cdf 0%, #1e4db7 100%);padding:20px;border-radius:8px;text-align:center;margin-bottom:15px;">
+        <p style="color:#fff;margin:0;font-size:14px;font-weight:500;">NET INCOME</p>
+        <h2 style="color:#fff;margin:10px 0 0 0;font-size:32px;font-weight:bold;">₱' . number_format($net, 2) . '</h2>
+    </div>
+
+    <div style="text-align:center;padding-top:15px;border-top:1px solid #ddd;">
+        <p style="color:#888;font-size:12px;margin:5px 0;">This is a computer-generated payslip. No signature required.</p>
+        <p style="color:#999;font-size:11px;margin:5px 0;">Generated on ' . date('F d, Y \a\t h:i A') . '</p>
+        <p style="color:#999;font-size:11px;margin:5px 0;">Employee Management System</p>
+    </div>
 </div>
 ';
 
@@ -212,16 +447,28 @@ if (!empty($email)) {
         $mail->setFrom('angelica_g_gregorio@dlsu.edu.ph', 'HR Department');
         $mail->addAddress($email, $empName);
         $mail->isHTML(true);
-        $mail->Subject = 'Payslip for ' . $weekLabel;
+        $mail->Subject = 'Payslip for ' . $weekLabel . ' - ' . $empName;
         $mail->Body = $html;
         $mail->AltBody = strip_tags($html);
 
         $mail->send();
-        echo json_encode(['status' => 'success', 'message' => "Payslip successfully emailed to $empName at $email."]);
+        echo json_encode([
+            'success' => true,
+            'status' => 'success', 
+            'message' => "✅ Payslip successfully emailed to $empName at $email."
+        ]);
     } catch (Exception $e) {
-        echo json_encode(['status' => 'error', 'message' => 'Failed to send email: ' . $mail->ErrorInfo]);
+        echo json_encode([
+            'success' => false,
+            'status' => 'error', 
+            'message' => '❌ Failed to send email: ' . $mail->ErrorInfo
+        ]);
     }
 } else {
-    echo json_encode(['status' => 'error', 'message' => "No email address found for $empName."]);
+    echo json_encode([
+        'success' => false,
+        'status' => 'error', 
+        'message' => "❌ No email address found for $empName."
+    ]);
 }
 ?>
