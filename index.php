@@ -47,38 +47,54 @@ if ($conn->connect_error) {
 }
 
 // ---------------------------
-// Insert New Employee handler
+// Insert New Record  handler
 // ---------------------------
 if (isset($_POST["add"])) {
-  $names = $_POST["name"];
-  $shiftDates = $_POST["shift_date"];
-  $shiftNos = $_POST['shift_no'];
-  $hoursArr = $_POST['hours'];
-  $dutyTypes = $_POST['duty_type'];
+  $names = isset($_POST["name"]) ? (array)$_POST["name"] : [];
+  $shiftDates = isset($_POST["shift_date"]) ? (array)$_POST["shift_date"] : [];
+  $shiftNos = isset($_POST['shift_no']) ? (array)$_POST['shift_no'] : [];
+  $businessUnits = isset($_POST['business_unit']) ? (array)$_POST['business_unit'] : [];
+  $timeIns = isset($_POST['time_in']) ? (array)$_POST['time_in'] : [];
+  $timeOuts = isset($_POST['time_out']) ? (array)$_POST['time_out'] : [];
+  $hoursArr = isset($_POST['hours']) ? (array)$_POST['hours'] : [];
+  $roles = isset($_POST['role']) ? (array)$_POST['role'] : [];
+  $dutyTypes = isset($_POST['duty_type']) ? (array)$_POST['duty_type'] : [];
+  $deductions = isset($_POST['deductions']) ? (array)$_POST['deductions'] : [];
+  $notes = isset($_POST['notes']) ? (array)$_POST['notes'] : [];
 
   $success = 0;
   $fail = 0;
-  for ($i = 0; $i < count($firstNames); $i++) {
-    $name = $conn->real_escape_string($names[$i]);
-    $shiftDate = $conn->real_escape_string($shiftDates[$i]);
-    $shiftNo = (int)$shiftNos[$i];
-    $hours = (int)$hoursArr[$i];
-    // Always use 'On Duty' (with space, title case)
-    $dutyType = $conn->real_escape_string(
-      preg_match('/^on\s*duty$/i', trim($dutyTypes[$i])) ? 'On Duty' : $dutyTypes[$i]
-    );
-    // Skip empty or invalid data
+  $errors = [];
+
+  $rows = count($names);
+  for ($i = 0; $i < $rows; $i++) {
+    $name = $conn->real_escape_string(trim($names[$i] ?? ''));
+    $shiftDate = $conn->real_escape_string($shiftDates[$i] ?? '');
+    $shiftNo = isset($shiftNos[$i]) ? (int)$shiftNos[$i] : 0;
+    $businessUnit = $conn->real_escape_string(trim($businessUnits[$i] ?? ''));
+    $timeIn = $conn->real_escape_string($timeIns[$i] ?? '');
+    $timeOut = $conn->real_escape_string($timeOuts[$i] ?? '');
+    $hours = isset($hoursArr[$i]) ? (int)$hoursArr[$i] : 0;
+    $role = $conn->real_escape_string(trim($roles[$i] ?? ''));
+    $rawDuty = trim($dutyTypes[$i] ?? '');
+    $dutyType = preg_match('/^on\s*duty$/i', $rawDuty) ? 'OnDuty' : $rawDuty;
+    $dutyType = $conn->real_escape_string($dutyType);
+    $deduction = isset($deductions[$i]) && $deductions[$i] !== '' ? $conn->real_escape_string($deductions[$i]) : '0';
+    $note = $conn->real_escape_string(trim($notes[$i] ?? ''));
+
     if ($name === '' || $hours < 0 || $shiftNo < 0) {
       $fail++;
+      $errors[] = "Row " . ($i + 1) . " skipped: invalid or missing data.";
       continue;
     }
-
-    $sql = "INSERT INTO timesheet (Name, ShiftDate, ShiftNo, Hours, DutyType)
-        VALUES ('$name', '$shiftDate', '$shiftNo', '$hours', '$dutyType')";
+    
+    $sql = "INSERT INTO timesheet (ShiftDate, ShiftNo, Business_Unit, Name, TimeIN, TimeOUT, Hours, Role, DutyType, Deductions, Notes)
+        VALUES ('$shiftDate', '$shiftNo', '$businessUnit', '$name', '$timeIn', '$timeOut', '$hours', '$role', '$dutyType', '$deduction', '$note')";
     if ($conn->query($sql)) {
       $success++;
     } else {
       $fail++;
+      $errors[] = "Row " . ($i + 1) . " failed: " . $conn->error;
     }
   }
   if ($success > 0) {
@@ -92,15 +108,22 @@ if (isset($_POST["add"])) {
 }
 
 // ---------------------------
-// Update Employee handler
+// Update Records handler
 // ---------------------------
 if (isset($_POST["update"])) {
   $ids = (array)$_POST["id"];
   $names = (array)$_POST["name"];
   $shiftDates = (array)$_POST["shift_date"];
   $shiftNos = (array)$_POST['shift_no'];
+  $businessUnits = (array)$_POST['business_unit'];
+  $timeIns = (array)$_POST['time_in'];
+  $timeOuts = (array)$_POST['time_out'];
   $hoursArr = (array)$_POST['hours'];
+  $roles = (array)$_POST['role'];
   $dutyTypes = (array)$_POST['duty_type'];
+  $deductions = (array)$_POST['deductions'];
+  $notes = (array)$_POST['notes'];
+  
   $success = 0;
   $fail = 0;
   for ($i = 0; $i < count($ids); $i++) {
@@ -108,18 +131,28 @@ if (isset($_POST["update"])) {
     $name = trim($conn->real_escape_string($names[$i]));
     $shiftDate = $conn->real_escape_string($shiftDates[$i]);
     $shiftNo = (int)$shiftNos[$i];
+    $businessUnit = $conn->real_escape_string(trim($businessUnits[$i] ?? ''));
+    $timeIn = $conn->real_escape_string($timeIns[$i] ?? '');
+    $timeOut = $conn->real_escape_string($timeOuts[$i] ?? '');
     $hours = (int)$hoursArr[$i];
-    // Always use 'On Duty' (with space, title case)
+    $role = $conn->real_escape_string(trim($roles[$i] ?? ''));
     $dutyType = $conn->real_escape_string(
-      preg_match('/^on\s*duty$/i', trim($dutyTypes[$i])) ? 'On Duty' : $dutyTypes[$i]
+      preg_match('/^on\s*duty$/i', trim($dutyTypes[$i])) ? 'OnDuty' : $dutyTypes[$i]
     );
+    $deduction = isset($deductions[$i]) && $deductions[$i] !== '' ? $conn->real_escape_string($deductions[$i]) : '0';
+    $note = $conn->real_escape_string(trim($notes[$i] ?? ''));
+    
     if ($hours < 0 || $shiftNo < 0) {
       $fail++;
       continue;
     }
+    
     $sql = "UPDATE timesheet
         SET Name='$name', ShiftDate='$shiftDate',
-          ShiftNo='$shiftNo', Hours='$hours', DutyType='$dutyType'
+            ShiftNo='$shiftNo', Business_Unit='$businessUnit',
+            TimeIN='$timeIn', TimeOUT='$timeOut',
+            Hours='$hours', Role='$role', DutyType='$dutyType',
+            Deductions='$deduction', Notes='$note'
         WHERE DataEntryID='$id'";
     if ($conn->query($sql)) {
       $success++;
@@ -192,20 +225,21 @@ if (isset($_POST['delete_selected']) && !empty($_POST['selected_ids'])) {
 
 
 
-// Search Query
+// Search Query - Only process if it's a search request
 $where = [];
+$is_search_request = isset($_POST["name"]) || isset($_POST["shift_date"]) || isset($_POST["shift_no"]);
 
-if (!empty($_POST["name"])) {
+if ($is_search_request && !empty($_POST["name"])) {
   $search_name = $conn->real_escape_string($_POST["name"]);
   $where[] = "(TRIM(REPLACE(Name, '\r', '')) LIKE '%" . trim($search_name) . "%')";
 }
 
-if (!empty($_POST["shift_date"])) {
+if ($is_search_request && !empty($_POST["shift_date"])) {
     $search_date = $conn->real_escape_string($_POST["shift_date"]);
     $where[] = "ShiftDate = '$search_date'";
 }
 
-if (!empty($_POST["shift_no"])) {
+if ($is_search_request && !empty($_POST["shift_no"])) {
     $search_no = (int) $_POST["shift_no"];
     $where[] = "ShiftNo = $search_no";
 }
@@ -216,30 +250,24 @@ $sql_all = "SELECT * FROM timesheet
               AND ShiftDate IS NOT NULL 
               AND ShiftNo IS NOT NULL 
               AND Hours IS NOT NULL 
-              AND TRIM(DutyType) <> ''";
+              AND TRIM(DutyType) <> ''
+            ORDER BY DataEntryID DESC";
 $sql_filtered = $sql_all;
 
 if (!empty($where)) {
-    $sql_filtered .= " AND " . implode(" AND ", $where);
+    // Remove ORDER BY from sql_all before adding WHERE conditions
+    $sql_filtered = str_replace("ORDER BY DataEntryID DESC", "", $sql_all);
+    $sql_filtered .= " AND " . implode(" AND ", $where) . " ORDER BY DataEntryID DESC";
 }
-
-$result_all = null; // default hidden
-if (isset($_POST["view_all"])) {
-    $result_all = $conn->query($sql_all);
-}
-
-$result_filtered = $conn->query($sql_filtered);
-
-// when show all button is clicked
 
 // Default: show all employees unless a filter is applied
 $show_all = true;
 
-
 // If any filter is applied, show filtered employees
-if (!empty($_POST["name"]) || !empty($_POST["shift_date"]) || !empty($_POST["shift_no"])) {
+if ($is_search_request && !empty($where)) {
   $show_all = false;
 }
+
 if (isset($_POST["view_all"])) {
   $show_all = true;
 }
@@ -347,136 +375,226 @@ if (isset($_POST['upload'])) {
 
 
 ?>
+
 <!DOCTYPE html>
 <html>
-
 <head>
-  <!-- Google Fonts: Google Sans (Product Sans) -->
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <title>Employee Management</title>
-    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="style.css?v=<?php echo time(); ?>" rel="stylesheet">
-  <!-- Custom styles moved to style.css -->
+    <style>
+    /* ✅ FIXED Loading Overlay Styles */
+    #loadingOverlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    
+    #loadingOverlay.show {
+      display: flex !important;
+    }
+    
+    .spinner {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #198754;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    #loadingOverlay p {
+      margin-top: 20px;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 500;
+    }
+    </style>
 </head>
 
 <body>
+ <!-- ✅ FIXED Upload Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <p>Uploading CSV... Please wait.</p>
+</div>
+
   <div class="d-flex flex-column min-vh-100">
-  <!-- SPLASH SCREEN -->
-    <!--
-      Splash screen shown on page load. Includes:
-      - Company logo (office-building.png) for branding
-      - Bootstrap spinner for loading animation
-      - System title for context
-      The splash screen is hidden via JavaScript after the page loads.
-    -->
+    <!-- Splash Screen -->
     <div id="splash-screen" class="d-flex justify-content-center align-items-center flex-column">
-          <!-- Bootstrap spinner for loading effect -->
         <div class="spinner-border text-light mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
-        <!-- Company logo for branding -->
         <img src="office-building.png" alt="Company Logo" style="height:56px;width:auto;margin-bottom:18px;filter: brightness(0) invert(1);">
-        <!-- System title -->
         <h2 class="text-light fw-bold">Employee Management System</h2>
     </div>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary); padding: 15px 30px;">
-        <div class="container-fluid d-flex justify-content-between align-items-center">
-            <span class="navbar-brand mb-0 h1 fw-bold" style="color: var(--text-light);">
-              <img src="office-building.png" alt="Company Logo" style="height:32px;vertical-align:middle;margin-right:10px;filter: brightness(0) invert(1);">
-              EMPLOYEE MANAGEMENT SYSTEM
-            </span>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <button type="button" class="btn btn-outline-success d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addModal">
-                        <span class="material-icons align-middle me-1">person_add</span> Add
-                    </button>
-                    <button type="button" class="btn btn-outline-warning d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#updateModal">
-                        <span class="material-icons align-middle me-1">edit</span> Update
-                    </button>
-                    <button type="button" class="btn btn-outline-danger d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                        <span class="material-icons align-middle me-1">delete</span> Delete
-                    </button>
-                    <button type="button" class="btn btn-outline-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#searchModal">
-                        <span class="material-icons align-middle me-1">search</span> Search
-                    </button>
+      
+<!-- Modern Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark modern-navbar">
+    <div class="container-fluid">
+        <!-- Brand -->
+        <a class="navbar-brand navbar-brand-modern" href="index.php">
+            <img src="office-building.png" alt="Logo">
+            <span>EMS</span>
+        </a>
 
-                    <a href="salary_summary.php" class="btn btn-outline-info d-flex align-items-center">
-                      <span class="material-icons align-middle me-1">paid</span> Salary Summary
+        <!-- Mobile Toggle -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- Left Navigation -->
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link nav-link-modern active" href="index.php">
+                        <span class="material-icons" style="font-size:20px;">dashboard</span>
+                        Dashboard
                     </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-modern" href="employees.php">
+                        <span class="material-icons" style="font-size:20px;">group</span>
+                        Employees
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-modern" href="salary_summary.php">
+                        <span class="material-icons" style="font-size:20px;">paid</span>
+                        Salary
+                    </a>
+                </li>
+            </ul>
 
-                    <button id="toggleDarkMode" class="icon-darkmode-btn ms-2" title="Toggle dark/light mode" style="background:none;border:none;outline:none;padding:0;display:flex;align-items:center;">
-                      <span id="darkModeIconSwitch" class="material-icons" aria-hidden="true">dark_mode</span>
+            <!-- Right Actions -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Actions Dropdown -->
+                <div class="dropdown">
+                    <button class="action-btn-modern dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <span class="material-icons" style="font-size:18px;">settings</span>
+                        Actions
                     </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-modern">
+                        <li>
+                            <a class="dropdown-item dropdown-item-modern" href="#" data-bs-toggle="modal" data-bs-target="#addModal">
+                                <span class="material-icons">person_add</span>
+                                Add Record
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item dropdown-item-modern" href="#" data-bs-toggle="modal" data-bs-target="#updateModal">
+                                <span class="material-icons">edit</span>
+                                Update Record
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item dropdown-item-modern" href="#" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <span class="material-icons">delete</span>
+                                Delete Record
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item dropdown-item-modern" href="#" data-bs-toggle="modal" data-bs-target="#searchModal">
+                                <span class="material-icons">search</span>
+                                Search Records
+                            </a>
+                        </li>
+                    </ul>
                 </div>
+
+                <!-- Divider -->
+                <div class="navbar-divider d-none d-lg-block"></div>
+
+                <!-- Dark Mode Toggle -->
+                <button id="toggleDarkMode" class="dark-mode-toggle" title="Toggle dark/light mode">
+                    <span id="darkModeIconSwitch" class="material-icons">dark_mode</span>
+                </button>
             </div>
         </div>
-    </nav>
-
-    <!-- DASHBOARD DATE FILTER & CARDS -->
-    <div class="dashboard-outer my-4">
-      <form method="get" class="mb-3 d-flex flex-wrap align-items-center justify-content-center gap-2 dashboard-filter-form">
-        <label for="dashboard_date" class="fw-bold me-2">Dashboard Date:</label>
-        <input type="date" id="dashboard_date" name="dashboard_date" class="form-control" style="max-width:180px;" value="<?= isset($_GET['dashboard_date']) ? htmlspecialchars($_GET['dashboard_date']) : '' ?>">
-        <button type="submit" class="btn btn-outline-primary">Apply</button>
-        <?php if (isset($_GET['dashboard_date']) && $_GET['dashboard_date']): ?>
-          <a href="index.php" class="btn btn-link">Clear</a>
-        <?php endif; ?>
-      </form>
-      <div class="row g-3 justify-content-center dashboard-row">
-        <?php
-          $dateFilter = isset($_GET['dashboard_date']) && $_GET['dashboard_date'] ?
-            (" AND ShiftDate='" . $conn->real_escape_string($_GET['dashboard_date']) . "'") : '';
-          $totalEmployees = $conn->query("SELECT COUNT(*) AS cnt FROM timesheet 
-          WHERE TRIM(Name) <> '' 
-          AND ShiftDate IS NOT NULL 
-          AND ShiftNo IS NOT NULL 
-          AND Hours IS NOT NULL 
-          AND TRIM(DutyType) <> '' 
-          $dateFilter")->fetch_assoc()['cnt'];
-          $totalLate = $conn->query("SELECT COUNT(*) as cnt FROM timesheet WHERE DutyType='Late' $dateFilter")->fetch_assoc()['cnt'];
-          $totalOvertime = $conn->query("SELECT COUNT(*) as cnt FROM timesheet WHERE DutyType='Overtime' $dateFilter")->fetch_assoc()['cnt'];
-          $totalOnDuty = $conn->query("SELECT COUNT(*) as cnt FROM timesheet WHERE DutyType='OnDuty' $dateFilter")->fetch_assoc()['cnt'];
-        ?>
-        <div class="col-6 col-md-3">
-          <div class="card shadow-sm text-center py-3 dashboard-card">
-            <span class="material-icons mb-1" style="font-size:2.2em;color:#018256;">group</span>
-            <div class="fw-bold" style="font-size:1.3em;">Total Entries</div>
-            <div class="fs-4"><?= $totalEmployees ?></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="card shadow-sm text-center py-3 dashboard-card">
-            <span class="material-icons mb-1" style="font-size:2.2em;color:#d32f2f;">schedule</span>
-            <div class="fw-bold" style="font-size:1.3em;">Total Late</div>
-            <div class="fs-4"><?= $totalLate ?></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="card shadow-sm text-center py-3 dashboard-card">
-            <span class="material-icons mb-1" style="font-size:2.2em;color:#1565c0;">alarm</span>
-            <div class="fw-bold" style="font-size:1.3em;">Total Overtime</div>
-            <div class="fs-4"><?= $totalOvertime ?></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="card shadow-sm text-center py-3 dashboard-card">
-            <span class="material-icons mb-1" style="font-size:2.2em;color:#018256;">verified_user</span>
-            <div class="fw-bold" style="font-size:1.3em;">On Duty</div>
-            <div class="fs-4"><?= $totalOnDuty ?></div>
-          </div>
-        </div>
+    </div>
+</nav>
+   <!-- DASHBOARD DATE FILTER & CARDS -->
+<div class="dashboard-outer my-4">
+  <form method="get" class="mb-3 d-flex flex-wrap align-items-center justify-content-center gap-2 dashboard-filter-form">
+    <label for="dashboard_date" class="fw-bold me-2">Dashboard Date:</label>
+    <input type="date" id="dashboard_date" name="dashboard_date" class="form-control" style="max-width:180px;" value="<?= isset($_GET['dashboard_date']) ? htmlspecialchars($_GET['dashboard_date']) : '' ?>">
+    <button type="submit" class="btn btn-outline-primary">Apply</button>
+    <?php if (isset($_GET['dashboard_date']) && $_GET['dashboard_date']): ?>
+      <a href="index.php" class="btn btn-link">Clear</a>
+    <?php endif; ?>
+  </form>
+  <div class="row g-3 justify-content-center dashboard-row">
+    <?php
+      // Build date filter
+      $dateFilter = "";
+      if (isset($_GET['dashboard_date']) && $_GET['dashboard_date']) {
+        $dateFilter = " WHERE ShiftDate='" . $conn->real_escape_string($_GET['dashboard_date']) . "'";
+      }
+      
+      // Count total entries (all records in timesheet)
+      $totalEmployees = $conn->query("SELECT COUNT(*) AS cnt FROM timesheet" . $dateFilter)->fetch_assoc()['cnt'];
+      
+      // Count Late entries
+      $lateDateFilter = $dateFilter ? $dateFilter . " AND DutyType='Late'" : " WHERE DutyType='Late'";
+      $totalLate = $conn->query("SELECT COUNT(*) AS cnt FROM timesheet" . $lateDateFilter)->fetch_assoc()['cnt'];
+      
+      // Count Overtime entries
+      $overtimeDateFilter = $dateFilter ? $dateFilter . " AND DutyType='Overtime'" : " WHERE DutyType='Overtime'";
+      $totalOvertime = $conn->query("SELECT COUNT(*) AS cnt FROM timesheet" . $overtimeDateFilter)->fetch_assoc()['cnt'];
+      
+      // Count On Duty entries (use 'OnDuty' to match your database)
+      $onDutyDateFilter = $dateFilter ? $dateFilter . " AND DutyType='OnDuty'" : " WHERE DutyType='OnDuty'";
+      $totalOnDuty = $conn->query("SELECT COUNT(*) AS cnt FROM timesheet" . $onDutyDateFilter)->fetch_assoc()['cnt'];
+    ?>
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm text-center py-3 dashboard-card">
+        <span class="material-icons mb-1" style="font-size:2.2em;color:#018256;">group</span>
+        <div class="fw-bold" style="font-size:1.3em;">Total Entries</div>
+        <div class="fs-4"><?= $totalEmployees ?></div>
       </div>
     </div>
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm text-center py-3 dashboard-card">
+        <span class="material-icons mb-1" style="font-size:2.2em;color:#d32f2f;">schedule</span>
+        <div class="fw-bold" style="font-size:1.3em;">Total Late</div>
+        <div class="fs-4"><?= $totalLate ?></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm text-center py-3 dashboard-card">
+        <span class="material-icons mb-1" style="font-size:2.2em;color:#1565c0;">alarm</span>
+        <div class="fw-bold" style="font-size:1.3em;">Total Overtime</div>
+        <div class="fs-4"><?= $totalOvertime ?></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm text-center py-3 dashboard-card">
+        <span class="material-icons mb-1" style="font-size:2.2em;color:#018256;">verified_user</span>
+        <div class="fw-bold" style="font-size:1.3em;">On Duty</div>
+        <div class="fs-4"><?= $totalOnDuty ?></div>
+      </div>
+    </div>
+  </div>
+</div>
 
     <div class="d-flex">
-        <!-- Google Material Icons CDN -->
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-        <!-- Main Content: Only Employees Table -->
+        <!-- Main Content -->
         <div id="content" class="flex-grow-1 p-4">
             <div id="all">
                 <div class="search-query-card mb-2" id="search-query-card" style="max-width:1100px;margin-left:auto;margin-right:auto;min-width:400px;width:90%;">
@@ -508,7 +626,7 @@ if (isset($_POST['upload'])) {
           </div>
           <div class="col-md-6 d-flex justify-content-md-end justify-content-start mt-2 mt-md-0 align-items-center gap-2">
 
-          <!--[ UPLOAD CSV BUTTON ]-->
+          <!-- ✅ FIXED Upload CSV with proper form ID -->
           <?php if ($show_all) { ?>
               <form method="POST" enctype="multipart/form-data" class="d-inline ms-2" id="uploadForm">
                 <input type="file" name="file" accept=".csv" required 
@@ -536,17 +654,17 @@ if (isset($_POST['upload'])) {
                   <table class="employee-table">
                     <thead>
                       <tr>
-                        <th><input type="checkbox" id="selectAll"></th>
-                        <th>ID</th>
-                        <th>Date</th>
-                        <th>Shift No</th>
-                        <th>Business Unit</th>
-                        <th>Name</th>
-                        <th>Time IN</th>
-                        <th>Time OUT</th>
-                        <th>Hours</th>
-                        <th>Role</th>
-                        <th>Duty Type</th>
+                        <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
+                        <th style="width: 60px;">ID</th>
+                        <th style="width: 120px;">Date</th>
+                        <th style="width: 80px;">Shift No</th>
+                        <th style="width: 150px;">Business Unit</th>
+                        <th style="width: 200px;">Name</th>
+                        <th style="width: 100px;">Time IN</th>
+                        <th style="width: 100px;">Time OUT</th>
+                        <th style="width: 80px;">Hours</th>
+                        <th style="width: 150px;">Role</th>
+                        <th style="width: 120px;">Duty Type</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -578,7 +696,7 @@ if (isset($_POST['upload'])) {
                           </tr>";
                         }
                       } else {
-                        echo "<tr><td colspan='8' class='text-center text-muted'>No records found</td></tr>";
+                        echo "<tr><td colspan='11' class='text-center text-muted'>No records found</td></tr>";
                       }
                       ?>
                     </tbody>
@@ -592,32 +710,74 @@ if (isset($_POST['upload'])) {
         </div>
     </div>
 
-    <!-- Add Modal -->
+    <!-- Modals (Add, Update, Delete, Search) remain the same -->
+<!-- ✅ FIXED Add Modal - Aligned with Timesheet Columns -->
     <div class="modal fade custom-modal" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+      <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 1200px;">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="addModalLabel">Add Employee</h5>
+            <h5 class="modal-title" id="addModalLabel">Add Record</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <form method="post" id="addForm">
               <div id="addFields">
-                <div class="add-row mb-3 border-bottom pb-2">
-                  <input type="text" name="name[]" class="form-control mb-2" placeholder="Full Name" required>
-                  <input type="date" name="shift_date[]" class="form-control mb-2" required>
-                  <input type="number" name="shift_no[]" class="form-control mb-2" placeholder="Shift No" required>
-                  <input type="number" name="hours[]" class="form-control mb-2" placeholder="Hours" required>
-                  <select name="duty_type[]" class="form-select mb-2" required>
-                    <option value="On Duty">On Duty</option>
-                    <option value="Late">Late</option>
-                    <option value="Overtime">Overtime</option>
-                  </select>
+                <div class="add-row mb-3 border-bottom pb-3">
+                  <div class="row g-2">
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Date</label>
+                      <input type="date" name="shift_date[]" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-1">
+                      <label class="form-label small fw-bold">Shift No</label>
+                      <input type="number" name="shift_no[]" class="form-control form-control-sm" placeholder="#" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Business Unit</label>
+                      <input type="text" name="business_unit[]" class="form-control form-control-sm" placeholder="Unit" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Name</label>
+                      <input type="text" name="name[]" class="form-control form-control-sm" placeholder="Full Name" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Time IN</label>
+                      <input type="time" name="time_in[]" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Time OUT</label>
+                      <input type="time" name="time_out[]" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-1">
+                      <label class="form-label small fw-bold">Hours</label>
+                      <input type="number" name="hours[]" class="form-control form-control-sm" placeholder="8" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Role</label>
+                      <input type="text" name="role[]" class="form-control form-control-sm" placeholder="Position" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Duty Type</label>
+                      <select name="duty_type[]" class="form-select form-select-sm" required>
+                        <option value="On Duty">On Duty</option>
+                        <option value="Late">Late</option>
+                        <option value="Overtime">Overtime</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Deductions</label>
+                      <input type="number" step="0.01" name="deductions[]" class="form-control form-control-sm" placeholder="0.00">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Notes</label>
+                      <input type="text" name="notes[]" class="form-control form-control-sm" placeholder="Optional notes">
+                    </div>
+                  </div>
                 </div>
               </div>
-              <button type="button" class="btn btn-outline-success w-100 mb-2" id="addMoreBtn">Add More</button>
+              <button type="button" class="btn btn-outline-success btn-sm mb-2" id="addMoreBtn">+ Add Another Record</button>
               <div class="d-grid gap-2 mt-2">
-                <button type="submit" name="add" class="btn btn-primary">Add</button>
+                <button type="submit" name="add" class="btn btn-primary">Add Records</button>
               </div>
             </form>
             <div class="text-center mt-3">
@@ -628,33 +788,77 @@ if (isset($_POST['upload'])) {
       </div>
     </div>
 
-    <!-- Update Modal -->
+    <!-- ✅ FIXED Update Modal - Aligned with Timesheet Columns -->
     <div class="modal fade custom-modal" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+      <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 950px;">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="updateModalLabel">Update Employee</h5>
+            <h5 class="modal-title" id="updateModalLabel">Update Record</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <form method="post" id="updateForm">
               <div id="updateFields">
-                <div class="update-row mb-3 border-bottom pb-2">
-                  <input type="number" name="id[]" class="form-control mb-2" placeholder="Data Entry ID" required>
-                  <input type="text" name="name[]" class="form-control mb-2" placeholder="Full Name" required>
-                  <input type="date" name="shift_date[]" class="form-control mb-2" required>
-                  <input type="number" name="shift_no[]" class="form-control mb-2" placeholder="Shift No" required>
-                  <input type="number" name="hours[]" class="form-control mb-2" placeholder="Hours" required>
-                  <select name="duty_type[]" class="form-select mb-2" required>
-                    <option value="OnDuty">On Duty</option>
-                    <option value="Late">Late</option>
-                    <option value="Overtime">Overtime</option>
-                  </select>
+                <div class="update-row mb-3 border-bottom pb-3">
+                  <div class="row g-2">
+                    <div class="col-md-1">
+                      <label class="form-label small fw-bold">ID</label>
+                      <input type="number" name="id[]" class="form-control form-control-sm" placeholder="ID" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Date</label>
+                      <input type="date" name="shift_date[]" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-1">
+                      <label class="form-label small fw-bold">Shift No</label>
+                      <input type="number" name="shift_no[]" class="form-control form-control-sm" placeholder="#" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Business Unit</label>
+                      <input type="text" name="business_unit[]" class="form-control form-control-sm" placeholder="Unit" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Name</label>
+                      <input type="text" name="name[]" class="form-control form-control-sm" placeholder="Full Name" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Time IN</label>
+                      <input type="time" name="time_in[]" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Time OUT</label>
+                      <input type="time" name="time_out[]" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-1">
+                      <label class="form-label small fw-bold">Hours</label>
+                      <input type="number" name="hours[]" class="form-control form-control-sm" placeholder="8" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Role</label>
+                      <input type="text" name="role[]" class="form-control form-control-sm" placeholder="Position" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Duty Type</label>
+                      <select name="duty_type[]" class="form-select form-select-sm" required>
+                        <option value="On Duty">On Duty</option>
+                        <option value="Late">Late</option>
+                        <option value="Overtime">Overtime</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Deductions</label>
+                      <input type="number" step="0.01" name="deductions[]" class="form-control form-control-sm" placeholder="0.00">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Notes</label>
+                      <input type="text" name="notes[]" class="form-control form-control-sm" placeholder="Optional notes">
+                    </div>
+                  </div>
                 </div>
               </div>
-              <button type="button" class="btn btn-outline-warning w-100 mb-2" id="updateMoreBtn">Update More</button>
+              <button type="button" class="btn btn-outline-warning btn-sm mb-2" id="updateMoreBtn">+ Update Another Record</button>
               <div class="d-grid gap-2 mt-2">
-                <button type="submit" name="update" class="btn btn-warning">Update</button>
+                <button type="submit" name="update" class="btn btn-warning">Update Record(s)</button>
               </div>
             </form>
             <div class="text-center mt-3">
@@ -665,23 +869,38 @@ if (isset($_POST['upload'])) {
       </div>
     </div>
 
-    <!-- Delete Modal -->
+    <!-- ✅ FIXED Delete Modal - Aligned with Timesheet Columns -->
     <div class="modal fade custom-modal" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+      <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="deleteModalLabel">Delete Employee</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title" id="deleteModalLabel">Delete Record</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+              <span class="material-icons me-2">warning</span>
+              <div>Enter the Data Entry ID(s) you want to delete. This action cannot be undone!</div>
+            </div>
             <form method="post" id="deleteForm">
               <div id="deleteFields">
-                <div class="delete-row mb-3 border-bottom pb-2">
-                  <input type="number" name="id[]" class="form-control mb-2" placeholder="Data Entry ID" required>
+                <div class="delete-row mb-3 border-bottom pb-3">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label class="form-label fw-bold">Data Entry ID</label>
+                      <input type="number" name="id[]" class="form-control" placeholder="Enter Employee ID to delete" required>
+                      <small class="form-text text-muted">You can find the ID in the first column of the table</small>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <button type="button" class="btn btn-outline-danger w-100 mb-2" id="deleteMoreBtn">Delete More</button>
-              <button type="submit" name="delete" class="btn btn-danger w-100">Delete</button>
+              <button type="button" class="btn btn-outline-danger btn-sm mb-3" id="deleteMoreBtn">+ Delete Another Record</button>
+              <div class="d-grid gap-2">
+                <button type="submit" name="delete" class="btn btn-danger">
+                  <span class="material-icons align-middle" style="font-size: 18px;">delete_forever</span>
+                  Delete Record(s)
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -732,15 +951,75 @@ if (isset($_POST['upload'])) {
         <?php endif; ?>
     </div>
 
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
-
-
+    
+    <!-- ✅ FIXED: Upload CSV Loading Script -->
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const uploadForm = document.getElementById("uploadForm");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      
+      if (uploadForm) {
+        uploadForm.addEventListener("submit", function(e) {
+          const fileInput = uploadForm.querySelector('input[type="file"]');
+          
+          // Check if a file is selected
+          if (fileInput && fileInput.files.length > 0) {
+            // Show loading overlay
+            loadingOverlay.classList.add("show");
+          }
+        });
+      }
+      
+      // Select All checkbox functionality
+      const selectAll = document.getElementById("selectAll");
+      const rowCheckboxes = document.querySelectorAll(".row-checkbox");
+      
+      if (selectAll) {
+        selectAll.addEventListener("change", function() {
+          rowCheckboxes.forEach(checkbox => {
+            checkbox.checked = selectAll.checked;
+          });
+        });
+      }
+    });
+    </script>
+ 
+    <!-- ✅ FIXED: Upload CSV Loading Script -->
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const uploadForm = document.getElementById("uploadForm");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      
+      if (uploadForm) {
+        uploadForm.addEventListener("submit", function(e) {
+          const fileInput = uploadForm.querySelector('input[type="file"]');
+          
+          // Check if a file is selected
+          if (fileInput && fileInput.files.length > 0) {
+            // Show loading overlay
+            loadingOverlay.classList.add("show");
+          }
+        });
+      }
+      
+      // Select All checkbox functionality
+      const selectAll = document.getElementById("selectAll");
+      const rowCheckboxes = document.querySelectorAll(".row-checkbox");
+      
+      if (selectAll) {
+        selectAll.addEventListener("change", function() {
+          rowCheckboxes.forEach(checkbox => {
+            checkbox.checked = selectAll.checked;
+          });
+        });
+      }
+    });
+    </script>
     <footer class="text-center py-3 mt-auto sticky-footer" style="background: var(--surface); color: var(--primary-dark); font-size: 1.05rem; border-top: 1px solid var(--primary-light);">
       Powered by <strong>Angelica Gregorio</strong> and <strong>Ysabella Santos</strong>
     </footer>
     </div>
+<script src="script.js?v=<?php echo time(); ?>"></script>
 </body>
-
 </html>

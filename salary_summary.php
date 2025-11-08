@@ -41,6 +41,8 @@ $dateRanges = [
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
     <link rel="stylesheet" href="salary_summary.css?v=<?php echo time(); ?>">
 
@@ -49,20 +51,51 @@ $dateRanges = [
 
 <body class="d-flex flex-column min-vh-100">
 
-    <!-- NAVBAR -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary); padding: 15px 30px;">
-        <div class="container-fluid d-flex justify-content-between align-items-center">
-            <span class="navbar-brand mb-0 h1 fw-bold" style="color: var(--text-light);">
-                <img src="office-building.png" alt="Company Logo"
-                    style="height:32px;vertical-align:middle;margin-right:10px;filter: brightness(0) invert(1);">
-                EMPLOYEE MANAGEMENT SYSTEM
-            </span>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <a href="index.php" class="btn btn-outline-secondary">Dashboard</a>
-                <a href="salary_summary.php" class="btn btn-outline-primary">Salary Summary</a>
+  <!-- Modern Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark modern-navbar">
+    <div class="container-fluid">
+        <a class="navbar-brand navbar-brand-modern" href="index.php">
+            <img src="office-building.png" alt="Logo">
+            <span>EMS</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link nav-link-modern" href="index.php">
+                        <span class="material-icons" style="font-size:20px;">dashboard</span>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-modern" href="employees.php">
+                        <span class="material-icons" style="font-size:20px;">group</span>
+                        Employees
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-modern active" href="salary_summary.php">
+                        <span class="material-icons" style="font-size:20px;">paid</span>
+                        Salary
+                    </a>
+                </li>
+            </ul>
+
+        
+
+                <div class="navbar-divider d-none d-lg-block"></div>
+
+                <button id="toggleDarkMode" class="dark-mode-toggle" title="Toggle dark/light mode">
+                    <span id="darkModeIconSwitch" class="material-icons">dark_mode</span>
+                </button>
             </div>
         </div>
-    </nav>
+    </div>
+</nav>
 
     <div class="container my-4">
         <h2 class="text-center mb-4 fw-bold">SALARY SUMMARY</h2>
@@ -175,14 +208,17 @@ $dateRanges = [
 
 
         <?php
-        if (isset($_GET['week']) && isset($_GET['month'])) {
-            $weeks = [
-                1 => ['label' => 'January 3 to January 9', 'start' => date('Y') . '-01-03', 'end' => date('Y') . '-01-09'],
-                2 => ['label' => 'January 10 to January 16', 'start' => date('Y') . '-01-10', 'end' => date('Y') . '-01-16'],
-                3 => ['label' => 'January 17 to January 23', 'start' => date('Y') . '-01-17', 'end' => date('Y') . '-01-23'],
-                4 => ['label' => 'January 24 to January 30', 'start' => date('Y') . '-01-24', 'end' => date('Y') . '-01-30'],
-                5 => ['label' => 'January 3 to January 30', 'start' => date('Y') . '-01-03', 'end' => date('Y') . '-01-30']
-            ];
+      if (isset($_GET['week']) && isset($_GET['month'])) {
+    $monthNum = str_pad(array_search($selectedMonth, $months) + 1, 2, '0', STR_PAD_LEFT);
+    $year = date('Y');
+    
+    $weeks = [
+        1 => ['label' => "$selectedMonth 3 to $selectedMonth 9", 'start' => "$year-$monthNum-03", 'end' => "$year-$monthNum-09"],
+        2 => ['label' => "$selectedMonth 10 to $selectedMonth 16", 'start' => "$year-$monthNum-10", 'end' => "$year-$monthNum-16"],
+        3 => ['label' => "$selectedMonth 17 to $selectedMonth 23", 'start' => "$year-$monthNum-17", 'end' => "$year-$monthNum-23"],
+        4 => ['label' => "$selectedMonth 24 to $selectedMonth 30", 'start' => "$year-$monthNum-24", 'end' => "$year-$monthNum-30"],
+        5 => ['label' => "$selectedMonth 3 to $selectedMonth 30", 'start' => "$year-$monthNum-03", 'end' => "$year-$monthNum-30"]
+    ];
 
             $selectedWeek = (int) $_GET['week'];
             if (!isset($weeks[$selectedWeek])) {
@@ -415,12 +451,31 @@ $dateRanges = [
                         }
                     }
                 }
+echo "<div class='select-all-container'>
+    <div>
+        <input type='checkbox' id='selectAllCheckbox'>
+        <label for='selectAllCheckbox' style='margin-left: 10px; font-weight: 600;'>
+            Select All Employees
+        </label>
+        <span class='selected-count' id='selectedCount'>(0 selected)</span>
+    </div>
+    <button type='button' class='btn-send-payslips' id='sendPayslipsBtn' disabled>
+        <i class='bi bi-envelope'></i> Send Payslips via Email
+    </button>
+</div>";
+
+echo "<form id='bulkPayslipForm' method='POST' action='send_bulk_payslips.php'>
+    <input type='hidden' name='weekLabel' value='" . htmlspecialchars($weekLabel) . "'>
+    <input type='hidden' name='weekStart' value='" . htmlspecialchars($start) . "'>
+    <input type='hidden' name='weekEnd' value='" . htmlspecialchars($end) . "'>
+    <input type='hidden' name='selectedWeek' value='" . $selectedWeek . "'>";
 
                 echo "<div class='table-responsive'>
                         <table class='table table-bordered text-center align-middle'>
-                            <thead class='table-dark'>
-                                <tr>
-                                    <th>EmpID</th>
+                           <thead class='table-dark'>
+    <tr>
+        <th class='checkbox-cell'><i class='bi bi-check-square'></i></th>
+        <th>EmpID</th>
                                     <th>Name</th>
                                     <th>Days of Work</th>
                                     <th>Gross Income</th>
@@ -571,25 +626,40 @@ $dateRanges = [
 
 
                     $net = $gross - $totalDeductions;
-
-                    echo "<tr>
-                            <td>{$emp['EmpID']}</td>
-                            <td>$name</td>
-                            <td>$days</td>
-                            <td>" . showValue($gross) . "</td>
-                            <td>" . showValue($totalDeductions) . "</td>
-                            <td><b class='text-success'>" . showValue($net) . "</b></td>
-                            <td>
-                                <button class='btn-showdetails' type='button' data-bs-toggle='collapse' data-bs-target='#details_$emp[EmpID]' title='Show Details'>
-                                <i class='bi bi-chevron-down'></i>
-                                </button>
-
-                                <a href='generate_payslip.php?name=" . urlencode($name) .
-                        "&email=" . urlencode($emp['Email']) . "' class='btn btn-primary btn-sm'>
-                                    Payslip
-                                </a>
-                            </td>
-                        </tr>
+echo "<tr>
+        <td class='checkbox-cell'>
+            <input type='checkbox' 
+                   class='employee-checkbox' 
+                   name='employees[]' 
+                   value='" . htmlspecialchars(json_encode([
+                       'name' => $name,
+                       'empID' => $emp['EmpID'],
+                       'email' => $emp['Email']
+                   ])) . "'>
+        </td>
+        <td>{$emp['EmpID']}</td>
+        <td>$name</td>
+        <td>$days</td>
+        <td>" . showValue($gross) . "</td>
+        <td>" . showValue($totalDeductions) . "</td>
+        <td><b class='text-success'>" . showValue($net) . "</b></td>
+        <td>
+            <button class='btn-showdetails' type='button' data-bs-toggle='collapse' data-bs-target='#details_{$emp['EmpID']}' title='Show Details'>
+            <i class='bi bi-chevron-down'></i>
+            </button>
+            <form method='POST' action='generate_payslip_pdf.php' target='_blank' style='display:inline-block;'>
+                <input type='hidden' name='empName' value='" . htmlspecialchars($name) . "'>
+                <input type='hidden' name='empID' value='" . htmlspecialchars($emp['EmpID']) . "'>
+                <input type='hidden' name='weekLabel' value='" . htmlspecialchars($weekLabel) . "'>
+                <input type='hidden' name='weekStart' value='" . htmlspecialchars($start) . "'>
+                <input type='hidden' name='weekEnd' value='" . htmlspecialchars($end) . "'>
+                <input type='hidden' name='selectedWeek' value='" . $selectedWeek . "'>
+                <button type='submit' class='btn btn-primary btn-sm'>
+                    <i class='bi bi-file-earmark-pdf'></i> Payslip
+                </button>
+            </form>
+        </td>
+    </tr>
                         <tr class='collapse' id='details_$emp[EmpID]'>
     <td colspan='7'>
         <div class='payroll-details'>
@@ -636,6 +706,7 @@ $dateRanges = [
                 }
 
                 echo "</tbody></table></div>";
+                echo "</tbody></table></div></form>";
             } else {
                 echo "<div class='alert alert-info text-center p-3 rounded shadow-sm' style='background:#f8f9fa; border:1px solid #ccc;'> <i class='bi bi-info-circle me-2'></i> No data to be shown for <b>{$selectedMonth}</b>. </div>";
             }
@@ -650,6 +721,47 @@ $dateRanges = [
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const employeeCheckboxes = document.querySelectorAll('.employee-checkbox');
+    const sendBtn = document.getElementById('sendPayslipsBtn');
+    const selectedCount = document.getElementById('selectedCount');
+    const bulkForm = document.getElementById('bulkPayslipForm');
+    
+    function updateSelection() {
+        const checkedCount = document.querySelectorAll('.employee-checkbox:checked').length;
+        selectedCount.textContent = `(${checkedCount} selected)`;
+        sendBtn.disabled = checkedCount === 0;
+        selectAllCheckbox.checked = checkedCount === employeeCheckboxes.length && checkedCount > 0;
+        selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < employeeCheckboxes.length;
+    }
+    
+    selectAllCheckbox.addEventListener('change', (e) => {
+        employeeCheckboxes.forEach(cb => cb.checked = e.target.checked);
+        updateSelection();
+    });
+    
+    employeeCheckboxes.forEach(cb => {
+        cb.addEventListener('change', updateSelection);
+    });
+    
+    sendBtn.addEventListener('click', () => {
+        const checkedCount = document.querySelectorAll('.employee-checkbox:checked').length;
+        if (checkedCount === 0) {
+            alert('Please select at least one employee.');
+            return;
+        }
+        if (confirm(`Send payslips to ${checkedCount} employee(s)?`)) {
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Sending...';
+            bulkForm.submit();
+        }
+    });
+    
+    updateSelection();
+});
+</script>
 </body>
 
 </html>

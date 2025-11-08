@@ -1,4 +1,3 @@
-
 /**
  * Employee Management System - script.js
  * --------------------------------------
@@ -11,7 +10,7 @@
  * - Dynamic modal field addition
  *
  * Author: Angelica Gregorio & Ysabella Santos
- * Last updated: 2025-10-05
+ * Last updated: 2025-11-06
  */
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -148,58 +147,151 @@ document.addEventListener("DOMContentLoaded", function () {
   // =============================
   // Handles 'Add More', 'Update More', and 'Delete More' buttons in modals
 
-  // Add More for Add Modal
-  const addMoreBtn = document.getElementById('addMoreBtn');
-  if (addMoreBtn) {
-    addMoreBtn.addEventListener('click', function() {
-      const addFields = document.getElementById('addFields');
-      const row = document.createElement('div');
-      row.className = 'add-row mb-3 border-bottom pb-2';
-      row.innerHTML = `
-        <input type="text" name="name[]" class="form-control mb-2" placeholder="Full Name" required>
-        <input type="date" name="shift_date[]" class="form-control mb-2" required>
-        <input type="number" name="shift_no[]" class="form-control mb-2" placeholder="Shift No" required>
-        <input type="number" name="hours[]" class="form-control mb-2" placeholder="Hours" required>
-        <select name="duty_type[]" class="form-select mb-2" required>
-          <option value="OnDuty">On Duty</option>
-          <option value="Late">Late</option>
-          <option value="Overtime">Overtime</option>
-        </select>
-      `;
-      addFields.appendChild(row);
-    });
-  }
-  // Update More for Update Modal
-  const updateMoreBtn = document.getElementById('updateMoreBtn');
-  if (updateMoreBtn) {
-    updateMoreBtn.addEventListener('click', function() {
-      const updateFields = document.getElementById('updateFields');
-      const row = document.createElement('div');
-      row.className = 'update-row mb-3 border-bottom pb-2';
-      row.innerHTML = `
-        <input type="number" name="id[]" class="form-control mb-2" placeholder="Data Entry ID" required>
-        <input type="text" name="name[]" class="form-control mb-2" placeholder="Full Name" required>        
-        <input type="date" name="shift_date[]" class="form-control mb-2" required>
-        <input type="number" name="shift_no[]" class="form-control mb-2" placeholder="Shift No" required>
-        <input type="number" name="hours[]" class="form-control mb-2" placeholder="Hours" required>
-        <select name="duty_type[]" class="form-select mb-2" required>
-          <option value="OnDuty">On Duty</option>
-          <option value="Late">Late</option>
-          <option value="Overtime">Overtime</option>
-        </select>
-      `;
-      updateFields.appendChild(row);
-    });
-  }
+// Add More for Add Modal - Single row layout matching index.php
+const addMoreBtn = document.getElementById('addMoreBtn');
+if (addMoreBtn) {
+  addMoreBtn.addEventListener('click', function() {
+    const addFields = document.getElementById('addFields');
+    const row = document.createElement('div');
+    row.className = 'add-row mb-3 border-bottom pb-3';
+    row.innerHTML = `
+      <div class="row g-2">
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Date</label>
+          <input type="date" name="shift_date[]" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label small fw-bold">Shift No</label>
+          <input type="number" name="shift_no[]" class="form-control form-control-sm" placeholder="#" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Business Unit</label>
+          <input type="text" name="business_unit[]" class="form-control form-control-sm" placeholder="Unit" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Name</label>
+          <input type="text" name="name[]" class="form-control form-control-sm" placeholder="Full Name" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Time IN</label>
+          <input type="time" name="time_in[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Time OUT</label>
+          <input type="time" name="time_out[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-1">
+          <label class="form-label small fw-bold">Hours</label>
+          <input type="number" name="hours[]" class="form-control form-control-sm" placeholder="8" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Role</label>
+          <input type="text" name="role[]" class="form-control form-control-sm" placeholder="Position" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Duty Type</label>
+          <select name="duty_type[]" class="form-select form-select-sm" required>
+            <option value="On Duty">On Duty</option>
+            <option value="Late">Late</option>
+            <option value="Overtime">Overtime</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Deductions</label>
+          <input type="number" step="0.01" name="deductions[]" class="form-control form-control-sm" placeholder="0.00">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold">Notes</label>
+          <input type="text" name="notes[]" class="form-control form-control-sm" placeholder="Optional notes">
+        </div>
+      </div>
+    `;
+    addFields.appendChild(row);
+  });
+}
+
+// Update More for Update Modal - Single row layout matching index.php
+const updateMoreBtn = document.getElementById('updateMoreBtn');
+if (updateMoreBtn) {
+  updateMoreBtn.addEventListener('click', function() {
+    const updateFields = document.getElementById('updateFields');
+    const row = document.createElement('div');
+    row.className = 'update-row mb-3 border-bottom pb-3';
+    row.innerHTML = `
+      <div class="row g-2">
+        <div class="col-md-1">
+          <label class="form-label small fw-bold">ID</label>
+          <input type="number" name="id[]" class="form-control form-control-sm" placeholder="ID" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Date</label>
+          <input type="date" name="shift_date[]" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label small fw-bold">Shift No</label>
+          <input type="number" name="shift_no[]" class="form-control form-control-sm" placeholder="#" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Business Unit</label>
+          <input type="text" name="business_unit[]" class="form-control form-control-sm" placeholder="Unit" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Name</label>
+          <input type="text" name="name[]" class="form-control form-control-sm" placeholder="Full Name" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Time IN</label>
+          <input type="time" name="time_in[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Time OUT</label>
+          <input type="time" name="time_out[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-1">
+          <label class="form-label small fw-bold">Hours</label>
+          <input type="number" name="hours[]" class="form-control form-control-sm" placeholder="8" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Role</label>
+          <input type="text" name="role[]" class="form-control form-control-sm" placeholder="Position" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Duty Type</label>
+          <select name="duty_type[]" class="form-select form-select-sm" required>
+            <option value="On Duty">On Duty</option>
+            <option value="Late">Late</option>
+            <option value="Overtime">Overtime</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Deductions</label>
+          <input type="number" step="0.01" name="deductions[]" class="form-control form-control-sm" placeholder="0.00">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold">Notes</label>
+          <input type="text" name="notes[]" class="form-control form-control-sm" placeholder="Optional notes">
+        </div>
+      </div>
+    `;
+    updateFields.appendChild(row);
+  });
+}
+
   // Delete More for Delete Modal
   const deleteMoreBtn = document.getElementById('deleteMoreBtn');
   if (deleteMoreBtn) {
     deleteMoreBtn.addEventListener('click', function() {
       const deleteFields = document.getElementById('deleteFields');
       const row = document.createElement('div');
-      row.className = 'delete-row mb-3 border-bottom pb-2';
+      row.className = 'delete-row mb-3 border-bottom pb-3';
       row.innerHTML = `
-        <input type="number" name="id[]" class="form-control mb-2" placeholder="Data Entry ID" required>
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label fw-bold">Data Entry ID</label>
+            <input type="number" name="id[]" class="form-control" placeholder="Enter Employee ID to delete" required>
+            <small class="form-text text-muted">You can find the ID in the first column of the table</small>
+          </div>
+        </div>
       `;
       deleteFields.appendChild(row);
     });
